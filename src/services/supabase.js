@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import "react-native-url-polyfill/auto";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { locationService } from "./locationService";
@@ -19,13 +20,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Fonction simple pour obtenir la bonne URL
 const getRedirectUrl = () => {
   if (Platform.OS === 'web') {
-    // Toujours utiliser localhost pour web, même en mode LAN
-    return window.location.origin ;
+    return window.location.origin;
   }
   return "exp://hjvahgg-ayoubel-8081.exp.direct/";
 };
 
-console.log("aa",getRedirectUrl());
+// Fonction pour créer une URL deep link correcte avec Linking
+const createDeepLinkUrl = (path = "") => {
+  // Utiliser Linking.createURL qui respecte le scheme dans app.json
+  const url = Linking.createURL(path);
+  console.log("Deep link URL créée:", url);
+  return url;
+};
+
+console.log("URL de redirection:", getRedirectUrl());
 
 export const authService = {
   // Connexion email/mot de passe
@@ -239,8 +247,11 @@ export const authService = {
   // Réinitialiser le mot de passe
   async resetPassword(email) {
     try {
+      const resetUrl = createDeepLinkUrl("password-reset");
+      console.log("URL de reset envoyée à Supabase:", resetUrl);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: getRedirectUrl(),
+        redirectTo: resetUrl,
       });
 
       if (error) throw error;

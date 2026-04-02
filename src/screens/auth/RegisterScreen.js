@@ -137,28 +137,33 @@ const RegisterScreen = ({ navigation }) => {
           {/* Logo et En-tête */}
           <View style={{ alignItems: "center", marginBottom: 48 }}>
             {/* Logo - Remplacez par votre propre logo */}
-            <View
-              style={{
-                width: 80,
-                height: 80,
-                backgroundColor:
-                  currentTheme === "dark" ? primaryDark : primaryColor,
-                borderRadius: 40,
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Text
-                style={{
-                  color: "#ffffff",
-                  fontSize: 24,
-                  fontWeight: "bold",
-                }}
-              >
-                L
-              </Text>
-            </View>
+                        <View
+                          style={{
+                            width: 160,
+                            height: 160,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            borderRadius: 80,
+                            backgroundColor:
+                              currentTheme === "dark" ? "#bd9b3f" : "#ffffff", 
+                            shadowColor: "#000",
+                            shadowOpacity: 0.15,
+                            shadowRadius: 8,
+                            shadowOffset: { width: 0, height: 4 },
+                            elevation: 5,
+                          }}
+                        >
+                          <Image
+                            source={require("../../../assets/AdIcon.png")}
+                            style={{
+                              width: 120,
+                              height: 120,
+                              resizeMode: "contain",
+                              tintColor: currentTheme === "dark" ? "#015b44" : undefined,
+                            }}
+                          />
+                        </View>
+
 
             <Text
               style={{

@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useAuth } from "../context/AuthContext";
 import { Home, User, Calculator, Map, Settings } from "lucide-react-native";
+import * as Linking from "expo-linking";
 
 // Import des écrans
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
+import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import ZakatCalculatorScreen from "../screens/ZakatCalculatorScreen";
 import SettingsScreen from "../screens/SettingsScreen";
@@ -33,6 +35,13 @@ const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen 
+      name="ResetPassword" 
+      component={ResetPasswordScreen}
+      options={{
+        animationEnabled: true,
+      }}
+    />
   </Stack.Navigator>
 );
 
@@ -84,8 +93,7 @@ const AppNavigator = () => {
 
   // Afficher l'écran de chargement amélioré
   if (loading) {
-    console.log("Loading authentication state...",user, loading);
-    return <LoadingScreen message="Vérification de l'authentification..." />;
+    return <LoadingScreen message="Initialisation de l'authentification..." />;
   }
 
   return user ? <MainTabs /> : <AuthStack />;
