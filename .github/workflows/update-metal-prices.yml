@@ -35,7 +35,7 @@ jobs:
         run: |
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
-          echo "Script exists: $(test -f scripts/updatePrices.js && echo 'YES' || echo 'NO')"
+          echo "Script exists: $(test -f scripts/updatePrices.mjs && echo 'YES' || echo 'NO')"
           echo "SUPABASE_URL is set: $(test -z "${{ secrets.SUPABASE_URL }}" && echo 'NO' || echo 'YES')"
           echo "GOLD_API_KEY is set: $(test -z "${{ secrets.GOLD_API_KEY }}" && echo 'NO' || echo 'YES')"
           echo "SUPABASE_SERVICE_ROLE_KEY is set: $(test -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" && echo 'NO' || echo 'YES')"
@@ -46,7 +46,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GOLD_API_KEY: ${{ secrets.GOLD_API_KEY }}
-        run: node scripts/updatePrices.js
+        run: node scripts/updatePrices.mjs
 
       # 5. Notification si succès
       - name: ✅ Success notification
