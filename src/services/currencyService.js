@@ -1,5 +1,5 @@
 // src/services/currencyService.js
-import { supabase } from "../supabaseClient";
+import { supabase } from "./supabase";
 
 // Cache local
 let cache = {

@@ -77,6 +77,7 @@ async function fetchMetalPrices() {
     }
 
     const goldData = await response.json();
+console.log("🔍 GoldAPI response:", JSON.stringify(goldData));
 
     // Récupérer aussi l'argent (Silver)
     const silverResponse = await fetch(
