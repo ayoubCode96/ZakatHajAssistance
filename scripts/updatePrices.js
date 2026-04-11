@@ -1,5 +1,4 @@
-const { createClient } = require("@supabase/supabase-js");
-
+import { createClient } from "@supabase/supabase-js";
 // Vérifier les variables d'environnement
 console.log("\n🔐 Vérification des variables d'environnement:");
 console.log(`   SUPABASE_URL: ${process.env.SUPABASE_URL ? "✅ SET" : "❌ MISSING"}`);
