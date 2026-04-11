@@ -63,7 +63,8 @@ async function fetchMetalPrices() {
     }
 
     const response = await fetch(
-      "https://www.goldapi.io/api/XAU/usd",
+      "https://www.goldapi.io/api/XAU/USD",
+
       {
         headers: {
           "x-access-token": GOLD_API_KEY,
@@ -79,10 +80,12 @@ async function fetchMetalPrices() {
     const goldData = await response.json();
 console.log("🔍 GoldAPI response:", JSON.stringify(goldData));
 
+if (goldData.error) {
+  throw new Error(`GoldAPI error: ${goldData.error}`);
+}
     // Récupérer aussi l'argent (Silver)
     const silverResponse = await fetch(
-      "https://www.goldapi.io/api/XAG/usd",
-      {
+"https://www.goldapi.io/api/XAG/USD",      {
         headers: {
           "x-access-token": GOLD_API_KEY,
         },
