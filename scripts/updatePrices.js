@@ -20,27 +20,10 @@ const GOLD_API_KEY = process.env.GOLD_API_KEY;
 
 // Map des pays vers devises
 const countryCurrencies = {
-  US: "USD", // États-Unis
-  FR: "EUR", // France
-  DE: "EUR", // Allemagne
-  GB: "GBP", // Royaume-Uni
-  CA: "CAD", // Canada
-  MA: "MAD", // Maroc
-  DZ: "DZD", // Algérie
-  TN: "TND", // Tunisie
-  SA: "SAR", // Arabie Saoudite
-  AE: "AED", // Émirats Arabes Unis
-  QA: "QAR", // Qatar
-  KW: "KWD", // Koweït
-  BH: "BHD", // Bahreïn
-  OM: "OMR", // Oman
-  TR: "TRY", // Turquie
-  EG: "EGP", // Égypte
-  JO: "JOD", // Jordanie
-  LB: "LBP", // Liban
-  SY: "SYP", // Syrie
-  IQ: "IQD", // Irak
-  IR: "IRR", // Iran
+  US: "USD", FR: "EUR", DE: "EUR", GB: "GBP", CA: "CAD",
+  MA: "MAD", DZ: "DZD", TN: "TND",
+  SA: "SAR", AE: "AED", QA: "QAR", KW: "KWD", BH: "BHD", OM: "OMR",
+  TR: "TRY", EG: "EGP", JO: "JOD", LB: "LBP", SY: "SYP", IQ: "IQD", IR: "IRR",
 };
 
 // Récupérer les pays/devises uniques des utilisateurs
@@ -53,10 +36,9 @@ async function getUserCountries() {
 
     if (error) {
       console.warn("⚠️ Erreur récupération pays:", error.message);
-      return ["MA"]; // Default à Maroc
+      return ["MAD"];
     }
 
-    // Extraire les devises uniques
     const devisesSet = new Set();
     users.forEach(user => {
       if (user.pays) {
@@ -65,14 +47,12 @@ async function getUserCountries() {
       }
     });
 
-    // Ajouter MAD par défaut
     devisesSet.add("MAD");
-
     console.log(`📍 Devises trouvées: ${Array.from(devisesSet).join(", ")}`);
     return Array.from(devisesSet);
   } catch (error) {
     console.error("❌ Erreur getUserCountries:", error.message);
-    return ["MAD"]; // Fallback à MAD
+    return ["MAD"];
   }
 }
 
