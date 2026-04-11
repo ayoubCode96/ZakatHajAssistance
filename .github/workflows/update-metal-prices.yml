@@ -1,0 +1,51 @@
+name: Update Metal Prices from GoldAPI
+
+on:
+  # Déclencher manuellement depuis GitHub Actions
+  workflow_dispatch:
+  
+  # Déclencher automatiquement selon un calendrier
+  schedule:
+    # Toutes les 6 heures (0h, 6h, 12h, 18h UTC)
+    - cron: '0 0,6,12,18 * * *'
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    name: Update Metal Prices
+
+    steps:
+      # 1. Cloner le repository
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Configurer Node.js
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # 3. Installer les dépendances
+      - name: 📦 Install dependencies
+        run: npm install
+
+      # 4. Exécuter le script de mise à jour
+      - name: 🌍 Update metal prices
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOLD_API_KEY: ${{ secrets.GOLD_API_KEY }}
+        run: node scripts/updatePrices.js
+
+      # 5. Notification si succès
+      - name: ✅ Success notification
+        if: success()
+        run: echo "✅ Metal prices updated successfully"
+
+      # 6. Notification si erreur
+      - name: ❌ Error notification
+        if: failure()
+        run: |
+          echo "❌ Failed to update metal prices"
+          exit 1

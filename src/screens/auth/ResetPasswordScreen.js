@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { useAppTranslation } from "../../hooks/useTranslation";
 import { useTheme } from "../../context/ThemeContext";
+import { useAlert } from "../../context/AlertContext";
 import { Lock, EyeOff, Eye, CheckCircle } from "lucide-react-native";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
@@ -19,6 +19,7 @@ import * as Linking from "expo-linking";
 const ResetPasswordScreen = ({ route, navigation }) => {
   const { t } = useAppTranslation();
   const { currentTheme } = useTheme();
+  const { alert, success: showSuccess, error: showError, confirm } = useAlert();
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -93,7 +94,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       const { data: session, error: sessionError } = await supabase.auth.getSession();
       
       if (!session?.session && !sessionToken) {
-        Alert.alert(
+        showError(
           t("error"),
           "Session expirée. Veuillez cliquer à nouveau sur le lien d'email."
         );
@@ -108,7 +109,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       if (error) throw error;
 
       setSuccess(true);
-      Alert.alert(
+      showSuccess(
         t("success"),
         "Votre mot de passe a été réinitialisé avec succès. Vous allez être redirigé vers la connexion."
       );
@@ -121,7 +122,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       }, 2000);
     } catch (error) {
       console.error("Erreur reset password:", error);
-      Alert.alert(
+      showError(
         t("error"),
         error.message || "Erreur lors de la réinitialisation du mot de passe. Vérifiez que le lien n'a pas expiré."
       );

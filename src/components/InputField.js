@@ -39,10 +39,11 @@ const InputField = ({
 
   // Gestion de la saisie numérique
   const handleTextChange = (text) => {
-    if (keyboardType === "numeric") {
+    // Support both numeric and decimal-pad
+    if (keyboardType === "numeric" || keyboardType === "decimal-pad") {
       const cleaned = text.replace(/[^0-9.]/g, "");
       const parts = cleaned.split(".");
-      if (parts.length > 2) return;
+      if (parts.length > 2) return; // Reject if more than one decimal point
       onChangeText(cleaned);
     } else {
       onChangeText(text);
@@ -100,7 +101,7 @@ const InputField = ({
           placeholderTextColor={currentTheme === "dark" ? "#e0d4a0" : "#6b6b6b"}
           secureTextEntry={secureTextEntry}
           keyboardType={
-            keyboardType === "numeric" ? "decimal-pad" : keyboardType
+            keyboardType === "numeric" || keyboardType === "decimal-pad" ? "decimal-pad" : keyboardType
           }
           onFocus={handleFocus}
           onBlur={handleBlur}
@@ -108,7 +109,9 @@ const InputField = ({
           autoCapitalize="none"
           autoCorrect={false}
           spellCheck={false}
+          multiline={false}
           returnKeyType="done"
+          editable={true}
           {...props}
         />
 

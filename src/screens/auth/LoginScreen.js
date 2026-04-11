@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Image,
   Modal,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
 import { useAppTranslation } from "../../hooks/useTranslation";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useAlert } from "../../context/AlertContext";
 import { Mail, Lock, Eye, EyeOff, Facebook, X } from "lucide-react-native";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
@@ -25,6 +25,7 @@ const LoginScreen = ({ navigation }) => {
   const { t, isRTL } = useAppTranslation();
   const { signIn, signInWithGoogle, signInWithFacebook, loading } = useAuth();
   const { currentTheme } = useTheme();
+  const { alert, success, error: showError, confirm } = useAlert();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -78,10 +79,10 @@ const LoginScreen = ({ navigation }) => {
       const result = await signIn(formData.email, formData.password);
 
       if (!result.success) {
-        Alert.alert(t("error"), result.error || "Erreur de connexion");
+        showError(t("error"), result.error || "Erreur de connexion");
       }
     } catch (error) {
-      Alert.alert(
+      showError(
         t("error"),
         "Erreur réseau. Vérifiez votre connexion internet."
       );
@@ -91,14 +92,14 @@ const LoginScreen = ({ navigation }) => {
   const handleGoogleLogin = async () => {
     const result = await signInWithGoogle();
     if (!result.success) {
-      Alert.alert(t("error"), result.error);
+      showError(t("error"), result.error);
     }
   };
 
   const handleFacebookLogin = async () => {
     const result = await signInWithFacebook();
     if (!result.success) {
-      Alert.alert(t("error"), result.error);
+      showError(t("error"), result.error);
     }
   };
 
@@ -132,7 +133,7 @@ const LoginScreen = ({ navigation }) => {
       console.log("✅ Code généré et stocké en BDD:", result.debug_code);
       setGeneratedCode(result.debug_code);
 
-      Alert.alert(
+      success(
         t("success"),
         `Un code de vérification a été envoyé à ${forgotPasswordEmail}`
       );
@@ -141,7 +142,7 @@ const LoginScreen = ({ navigation }) => {
       setForgotPasswordErrors({});
     } catch (error) {
       console.error("❌ Erreur handleSendCode:", error);
-      Alert.alert(
+      showError(
         t("error"),
         error.message || "Erreur lors de l'envoi du code. Vérifiez votre email."
       );
@@ -169,7 +170,7 @@ const LoginScreen = ({ navigation }) => {
       );
 
       if (!result.success) {
-        Alert.alert(t("error"), result.error || "Code invalide ou expiré");
+        showError(t("error"), result.error || "Code invalide ou expiré");
         setForgotPasswordLoading(false);
         return;
       }
@@ -178,7 +179,7 @@ const LoginScreen = ({ navigation }) => {
       setForgotPasswordStep(3);
       setForgotPasswordErrors({});
     } catch (error) {
-      Alert.alert(t("error"), "Erreur lors de la vérification du code");
+      showError(t("error"), "Erreur lors de la vérification du code");
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -216,7 +217,7 @@ const LoginScreen = ({ navigation }) => {
         throw new Error(result.error || "Erreur lors de la réinitialisation");
       }
 
-      Alert.alert(
+      success(
         t("success"),
         "Votre mot de passe a été réinitialisé avec succès!"
       );
@@ -231,7 +232,7 @@ const LoginScreen = ({ navigation }) => {
       setGeneratedCode(null);
       setForgotPasswordErrors({});
     } catch (error) {
-      Alert.alert(
+      showError(
         t("error"),
         error.message ||
           "Erreur lors de la réinitialisation du mot de passe"

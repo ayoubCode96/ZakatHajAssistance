@@ -22,7 +22,7 @@ const getRedirectUrl = () => {
   if (Platform.OS === 'web') {
     return window.location.origin;
   }
-  return "exp://hjvahgg-ayoubel-8081.exp.direct/";
+  return "exp://ribh9ae-ayoubel-8081.exp.direct/";
 };
 
 // Fonction pour créer une URL deep link correcte avec Linking

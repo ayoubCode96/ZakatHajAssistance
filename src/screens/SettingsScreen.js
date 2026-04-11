@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAppTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useAlert } from '../context/AlertContext';
 import { 
   Settings, 
   Moon, 
@@ -21,33 +22,27 @@ const SettingsScreen = () => {
   const { currentTheme, toggleTheme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { userCurrency, refreshData, userCountry } = useCurrency();
+  const { alert, success, error: showError, confirm } = useAlert();
 
   const [refreshing, setRefreshing] = useState(false);
 
   const handleLanguageChange = (lang) => {
     changeLanguage(lang);
-    Alert.alert(t('success'), `Langue changÃ©e en ${lang.toUpperCase()}`);
+    success(t('success'), `Langue changÃ©e en ${lang.toUpperCase()}`);
   };
 
   const handleRefreshData = async () => {
     setRefreshing(true);
     await refreshData();
     setRefreshing(false);
-    Alert.alert(t('success'), 'DonnÃ©es mises Ã  jour');
+    success(t('success'), 'DonnÃ©es mises Ã  jour');
   };
 
   const handleLogout = () => {
-    Alert.alert(
+    confirm(
       t('logout'),
       'ÃŠtes-vous sÃ»r de vouloir vous dÃ©connecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'DÃ©connexion', 
-          style: 'destructive',
-          onPress: signOut
-        },
-      ]
+      signOut
     );
   };
 
@@ -163,7 +158,7 @@ const SettingsScreen = () => {
                 styles.languageOptionText,
                 currentLanguage === 'fr' && styles.languageOptionTextSelected
               ]}>
-                í·«í·· FranÃ§ais
+                FranÃ§ais
               </Text>
             </TouchableOpacity>
             
@@ -178,7 +173,7 @@ const SettingsScreen = () => {
                 styles.languageOptionText,
                 currentLanguage === 'ar' && styles.languageOptionTextSelected
               ]}>
-                í·¸í·¦ Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©
+                Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©
               </Text>
             </TouchableOpacity>
             
@@ -193,7 +188,7 @@ const SettingsScreen = () => {
                 styles.languageOptionText,
                 currentLanguage === 'en' && styles.languageOptionTextSelected
               ]}>
-                í·ºí·¸ English
+                English
               </Text>
             </TouchableOpacity>
           </View>

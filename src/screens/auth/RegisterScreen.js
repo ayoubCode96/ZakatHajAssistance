@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Image,
 } from "react-native";
 import { useAppTranslation } from "../../hooks/useTranslation";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useAlert } from "../../context/AlertContext";
 import { Mail, Lock, Eye, EyeOff, User, Facebook } from "lucide-react-native";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
@@ -21,6 +21,7 @@ const RegisterScreen = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { signUp, signInWithGoogle, signInWithFacebook, loading } = useAuth();
   const { currentTheme } = useTheme();
+  const { alert, success, error: showError, confirm } = useAlert();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -80,15 +81,15 @@ const RegisterScreen = ({ navigation }) => {
       );
 
       if (result.success) {
-        Alert.alert(t("success"), "Compte créé avec succès");
+        success(t("success"), "Compte créé avec succès");
       } else {
-        Alert.alert(
+        showError(
           t("error"),
           result.error || "Erreur lors de la création du compte"
         );
       }
     } catch (error) {
-      Alert.alert(
+      showError(
         t("error"),
         "Erreur réseau. Vérifiez votre connexion internet."
       );
@@ -98,14 +99,14 @@ const RegisterScreen = ({ navigation }) => {
   const handleGoogleLogin = async () => {
     const result = await signInWithGoogle();
     if (!result.success) {
-      Alert.alert(t("error"), result.error);
+      showError(t("error"), result.error);
     }
   };
 
   const handleFacebookLogin = async () => {
     const result = await signInWithFacebook();
     if (!result.success) {
-      Alert.alert(t("error"), result.error);
+      showError(t("error"), result.error);
     }
   };
 
