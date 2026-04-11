@@ -1,4 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
+const { createClient } = require("@supabase/supabase-js");
+
+// Vérifier les variables d'environnement
+console.log("\n🔐 Vérification des variables d'environnement:");
+console.log(`   SUPABASE_URL: ${process.env.SUPABASE_URL ? "✅ SET" : "❌ MISSING"}`);
+console.log(`   SUPABASE_SERVICE_ROLE_KEY: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? "✅ SET" : "❌ MISSING"}`);
+console.log(`   GOLD_API_KEY: ${process.env.GOLD_API_KEY ? "✅ SET" : "❌ MISSING"}`);
+
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("❌ ERREUR: Variables d'environnement manquantes!");
+  process.exit(1);
+}
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -68,6 +79,10 @@ async function getUserCountries() {
 // Récupérer les prix depuis GoldAPI
 async function fetchMetalPrices() {
   try {
+    if (!GOLD_API_KEY) {
+      throw new Error("GOLD_API_KEY environment variable is not set");
+    }
+
     const response = await fetch(
       "https://www.goldapi.io/api/XAU/usd",
       {
@@ -78,7 +93,8 @@ async function fetchMetalPrices() {
     );
 
     if (!response.ok) {
-      throw new Error(`GoldAPI responded with status ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`GoldAPI responded with status ${response.status}: ${errorText}`);
     }
 
     const goldData = await response.json();
@@ -94,7 +110,8 @@ async function fetchMetalPrices() {
     );
 
     if (!silverResponse.ok) {
-      throw new Error(`GoldAPI Silver responded with status ${silverResponse.status}`);
+      const errorText = await silverResponse.text();
+      throw new Error(`GoldAPI Silver responded with status ${silverResponse.status}: ${errorText}`);
     }
 
     const silverData = await silverResponse.json();
