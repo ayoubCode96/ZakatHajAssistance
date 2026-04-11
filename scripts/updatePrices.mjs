@@ -148,52 +148,14 @@ const TROY_OZ_TO_GRAMS = 31.1035;
 async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRates, devises) {
   try {
     const pricePerGramUSD = pricePerTroyOzUSD / TROY_OZ_TO_GRAMS;
+    console.log(`\n📊 ${type}: $${pricePerGramUSD.toFixed(6)}/g USD`);
 
-    console.log(`\n📊 ${type}:`);
-    console.log(`   Prix USD/g: $${pricePerGramUSD.toFixed(6)}`);
-
-    // Obtenir l'enregistrement actif pour ce métal
-    const { data: current, error: selectError } = await supabase
-      .from("prix_metaux_precieux")
-      .select("id, prix_gramme")
-      .eq("type_metal", type)
-      .eq("actif", true)
-      .eq("devise", "USD") // Stocker le prix de base en USD
-      .single();
-
-    if (selectError && selectError.code !== 'PGRST116') {
-      console.warn(`⚠️  Métal ${type} USD non trouvé (OK pour première fois)`);
-    }
-
-    const oldPrice = current?.prix_gramme || 0;
-
-    // Mise à jour du prix en USD (prix de base)
-    if (current) {
-      const { error: updateError } = await supabase
-        .from("prix_metaux_precieux")
-        .update({
-          prix_gramme: parseFloat(pricePerGramUSD.toFixed(6)),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", current.id);
-
-      if (updateError) {
-        console.error(`❌ Erreur mise à jour ${type} USD:`, updateError.message);
-        return false;
-      }
-
-      const change = oldPrice > 0 
-        ? ((pricePerGramUSD - oldPrice) / oldPrice * 100).toFixed(2)
-        : "0.00";
-      console.log(`✅ ${type} USD mis à jour (${change > 0 ? '+' : ''}${change}%)`);
-    }
-
-    // Mettre à jour pour chaque devise
+    // Mettre à jour pour chaque devise (incluant USD si présent)
     for (const devise of devises) {
-      if (devise === "USD") continue; // Déjà traité
-
-      const exchangeRate = exchangeRates[devise] || exchangeRates.MAD;
-      const priceInDevise = pricePerGramUSD * exchangeRate;
+      const exchangeRate = exchangeRates[devise] || 1;
+      const priceInDevise = devise === "USD" 
+        ? pricePerGramUSD 
+        : pricePerGramUSD * exchangeRate;
 
       const { data: existingRecord, error: findError } = await supabase
         .from("prix_metaux_precieux")
@@ -201,45 +163,41 @@ async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRate
         .eq("type_metal", type)
         .eq("devise", devise)
         .eq("actif", true)
-        .single();
+        .maybeSingle(); // ← maybeSingle() au lieu de single() pour éviter l'erreur si pas trouvé
 
-      if (!findError && existingRecord) {
-        // Mise à jour
+      if (existingRecord) {
         const { error: updateError } = await supabase
           .from("prix_metaux_precieux")
           .update({
-            prix_gramme: parseFloat(priceInDevise.toFixed(2)),
+            prix_gramme: parseFloat(priceInDevise.toFixed(4)),
             updated_at: new Date().toISOString(),
           })
           .eq("id", existingRecord.id);
 
         if (updateError) {
-          console.error(`❌ Erreur mise à jour ${type} ${devise}:`, updateError.message);
-          continue;
+          console.error(`❌ Update ${type} ${devise}:`, updateError.message);
+        } else {
+          console.log(`✅ ${type} ${devise}/g: ${priceInDevise.toFixed(4)}`);
         }
-
-        console.log(`✅ ${type} ${devise}/g: ${priceInDevise.toFixed(2)}`);
       } else {
-        // Insertion
         const { error: insertError } = await supabase
           .from("prix_metaux_precieux")
-          .insert([
-            {
-              type_metal: type,
-              devise: devise,
-              prix_gramme: parseFloat(priceInDevise.toFixed(2)),
-              actif: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ]);
+          .insert([{
+            type_metal: type,
+            devise: devise,
+            prix_gramme: parseFloat(priceInDevise.toFixed(4)),
+            date_application: new Date().toISOString().split('T')[0],
+            actif: true,
+            source: "GoldAPI",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }]);
 
         if (insertError) {
-          console.error(`❌ Erreur insertion ${type} ${devise}:`, insertError.message);
-          continue;
+          console.error(`❌ Insert ${type} ${devise}:`, insertError.message);
+        } else {
+          console.log(`✅ ${type} ${devise}/g: ${priceInDevise.toFixed(4)} (nouveau)`);
         }
-
-        console.log(`✅ ${type} ${devise}/g: ${priceInDevise.toFixed(2)} (nouveau)`);
       }
     }
 
@@ -249,7 +207,6 @@ async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRate
     return false;
   }
 }
-
 async function main() {
   try {
     console.log("🚀 Démarrage de mise à jour des prix des métaux précieux...");
