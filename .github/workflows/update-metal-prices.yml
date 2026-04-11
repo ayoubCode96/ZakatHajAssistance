@@ -23,12 +23,22 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       # 3. Installer les dépendances
       - name: 📦 Install dependencies
         run: npm install
+
+      # 3.5 Vérifier les variables d'environnement
+      - name: 🔍 Debug environment
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Script exists: $(test -f scripts/updatePrices.js && echo 'YES' || echo 'NO')"
+          echo "SUPABASE_URL is set: $(test -z "${{ secrets.SUPABASE_URL }}" && echo 'NO' || echo 'YES')"
+          echo "GOLD_API_KEY is set: $(test -z "${{ secrets.GOLD_API_KEY }}" && echo 'NO' || echo 'YES')"
+          echo "SUPABASE_SERVICE_ROLE_KEY is set: $(test -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" && echo 'NO' || echo 'YES')"
 
       # 4. Exécuter le script de mise à jour
       - name: 🌍 Update metal prices
