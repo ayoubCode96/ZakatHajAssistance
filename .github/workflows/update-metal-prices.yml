@@ -6,8 +6,8 @@ on:
   
   # Déclencher automatiquement selon un calendrier
   schedule:
-    # Toutes les 6 heures (0h, 6h, 12h, 18h UTC)
-    - cron: '0 0,6,12,18 * * *'
+  # 7h00 et 19h00 UTC (soit 8h00 et 20h00 heure locale)
+    - cron: '0 7,19 * * *'
 
 jobs:
   update-prices:
