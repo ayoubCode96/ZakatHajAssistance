@@ -160,16 +160,13 @@ async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRate
     for (const devise of devises) {
       const exchangeRate = exchangeRates[devise] || 1;
       const rate = devise === "USD" ? 1 : exchangeRate;
-
       const priceInDevise = pricePerGramUSD * rate;
 
-      // Convertir les puretés dans la devise cible
-      const puretes_devise = {};
-      for (const [key, valUSD] of Object.entries(puretes)) {
-        puretes_devise[key] = parseFloat((valUSD * rate).toFixed(4));
-      }
+      // ❌ Supprimer ce bloc (puretes_devise déclaré trop tôt avant le check null)
+      // const puretes_devise = {};
+      // for (const [key, valUSD] of Object.entries(puretes)) { ... }
 
-      const { data: existingRecord, error: findError } = await supabase
+      const { data: existingRecord } = await supabase
         .from("prix_metaux_precieux")
         .select("id")
         .eq("type_metal", type)
@@ -178,19 +175,20 @@ async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRate
         .maybeSingle();
 
       const payload = {
-  prix_gramme: parseFloat(priceInDevise.toFixed(4)),
-  updated_at: new Date().toISOString(),
-};
+        prix_gramme: parseFloat(priceInDevise.toFixed(4)),
+        updated_at: new Date().toISOString(),
+      };
 
-if (puretes) {
-  const puretes_devise = {};
-  for (const [key, valUSD] of Object.entries(puretes)) {
-    puretes_devise[key] = parseFloat((valUSD * rate).toFixed(4));
-  }
-  payload.prix_gramme_24k = puretes_devise.prix_gramme_24k;
-  payload.prix_gramme_20k = puretes_devise.prix_gramme_20k;
-  payload.prix_gramme_18k = puretes_devise.prix_gramme_18k;
-}
+      // ✅ Un seul bloc, avec check null
+      if (puretes) {
+        const puretes_devise = {};
+        for (const [key, valUSD] of Object.entries(puretes)) {
+          puretes_devise[key] = parseFloat((valUSD * rate).toFixed(4));
+        }
+        payload.prix_gramme_24k = puretes_devise.prix_gramme_24k;
+        payload.prix_gramme_20k = puretes_devise.prix_gramme_20k;
+        payload.prix_gramme_18k = puretes_devise.prix_gramme_18k;
+      }
 
       if (existingRecord) {
         const { error: updateError } = await supabase
@@ -201,7 +199,7 @@ if (puretes) {
         if (updateError) {
           console.error(`❌ Update ${type} ${devise}:`, updateError.message);
         } else {
-          console.log(`✅ ${type} ${devise} — 24k:${payload.prix_gramme_24k} 20k:${payload.prix_gramme_20k} 18k:${payload.prix_gramme_18k}`);
+          console.log(`✅ ${type} ${devise} — prix_gramme:${payload.prix_gramme}${puretes ? ` 24k:${payload.prix_gramme_24k} 20k:${payload.prix_gramme_20k} 18k:${payload.prix_gramme_18k}` : ""}`);
         }
       } else {
         const { error: insertError } = await supabase
@@ -210,10 +208,12 @@ if (puretes) {
             type_metal: type,
             devise: devise,
             prix_gramme: parseFloat(priceInDevise.toFixed(4)),
-            prix_gramme_24k: puretes_devise.prix_gramme_24k,
-            prix_gramme_20k: puretes_devise.prix_gramme_20k,
-            prix_gramme_18k: puretes_devise.prix_gramme_18k,
-            date_application: new Date().toISOString().split('T')[0],
+            ...(puretes && {
+              prix_gramme_24k: payload.prix_gramme_24k,
+              prix_gramme_20k: payload.prix_gramme_20k,
+              prix_gramme_18k: payload.prix_gramme_18k,
+            }),
+            date_application: new Date().toISOString().split("T")[0],
             actif: true,
             source: "GoldAPI",
             created_at: new Date().toISOString(),
@@ -223,7 +223,7 @@ if (puretes) {
         if (insertError) {
           console.error(`❌ Insert ${type} ${devise}:`, insertError.message);
         } else {
-          console.log(`✅ ${type} ${devise} — 24k:${puretes_devise.prix_gramme_24k} (nouveau)`);
+          console.log(`✅ ${type} ${devise} — prix_gramme:${payload.prix_gramme} (nouveau)`);
         }
       }
     }
@@ -244,7 +244,7 @@ async function main() {
     console.log(`\n💱 Devises à mettre à jour: ${devises.join(", ")}`);
 
     // 2. Récupérer les prix des métaux depuis GoldAPI
-    const { gold, silver } = await fetchMetalPrices();
+    const { gold, silver,gold_puretes  } = await fetchMetalPrices();
     console.log(`\n💰 Prix actuels (USD/Troy oz):`);
     console.log(`   Or: $${gold.toFixed(2)}`);
     console.log(`   Argent: $${silver.toFixed(2)}`);
