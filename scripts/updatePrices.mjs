@@ -102,6 +102,12 @@ if (goldData.error) {
     return {
       gold: goldData.price, // Prix en USD par troy oz
       silver: silverData.price, // Prix en USD par troy oz
+       gold_puretes: {
+    prix_gramme_24k: goldData.price_gram_24k,
+    prix_gramme_20k: goldData.price_gram_20k,
+    prix_gramme_18k: goldData.price_gram_18k,
+  },
+  silver_puretes: null,
     };
   } catch (error) {
     console.error("❌ Erreur récupération GoldAPI:", error.message);
@@ -145,17 +151,23 @@ async function getExchangeRates(devises) {
 // 1 troy ounce = 31.1035 grammes
 const TROY_OZ_TO_GRAMS = 31.1035;
 
-async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRates, devises) {
+// Modifier updateMetalPrice pour accepter et sauvegarder les puretés
+async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRates, devises, puretes) {
   try {
     const pricePerGramUSD = pricePerTroyOzUSD / TROY_OZ_TO_GRAMS;
     console.log(`\n📊 ${type}: $${pricePerGramUSD.toFixed(6)}/g USD`);
 
-    // Mettre à jour pour chaque devise (incluant USD si présent)
     for (const devise of devises) {
       const exchangeRate = exchangeRates[devise] || 1;
-      const priceInDevise = devise === "USD" 
-        ? pricePerGramUSD 
-        : pricePerGramUSD * exchangeRate;
+      const rate = devise === "USD" ? 1 : exchangeRate;
+
+      const priceInDevise = pricePerGramUSD * rate;
+
+      // Convertir les puretés dans la devise cible
+      const puretes_devise = {};
+      for (const [key, valUSD] of Object.entries(puretes)) {
+        puretes_devise[key] = parseFloat((valUSD * rate).toFixed(4));
+      }
 
       const { data: existingRecord, error: findError } = await supabase
         .from("prix_metaux_precieux")
@@ -163,21 +175,33 @@ async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRate
         .eq("type_metal", type)
         .eq("devise", devise)
         .eq("actif", true)
-        .maybeSingle(); // ← maybeSingle() au lieu de single() pour éviter l'erreur si pas trouvé
+        .maybeSingle();
+
+      const payload = {
+  prix_gramme: parseFloat(priceInDevise.toFixed(4)),
+  updated_at: new Date().toISOString(),
+};
+
+if (puretes) {
+  const puretes_devise = {};
+  for (const [key, valUSD] of Object.entries(puretes)) {
+    puretes_devise[key] = parseFloat((valUSD * rate).toFixed(4));
+  }
+  payload.prix_gramme_24k = puretes_devise.prix_gramme_24k;
+  payload.prix_gramme_20k = puretes_devise.prix_gramme_20k;
+  payload.prix_gramme_18k = puretes_devise.prix_gramme_18k;
+}
 
       if (existingRecord) {
         const { error: updateError } = await supabase
           .from("prix_metaux_precieux")
-          .update({
-            prix_gramme: parseFloat(priceInDevise.toFixed(4)),
-            updated_at: new Date().toISOString(),
-          })
+          .update(payload)
           .eq("id", existingRecord.id);
 
         if (updateError) {
           console.error(`❌ Update ${type} ${devise}:`, updateError.message);
         } else {
-          console.log(`✅ ${type} ${devise}/g: ${priceInDevise.toFixed(4)}`);
+          console.log(`✅ ${type} ${devise} — 24k:${payload.prix_gramme_24k} 20k:${payload.prix_gramme_20k} 18k:${payload.prix_gramme_18k}`);
         }
       } else {
         const { error: insertError } = await supabase
@@ -186,6 +210,9 @@ async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRate
             type_metal: type,
             devise: devise,
             prix_gramme: parseFloat(priceInDevise.toFixed(4)),
+            prix_gramme_24k: puretes_devise.prix_gramme_24k,
+            prix_gramme_20k: puretes_devise.prix_gramme_20k,
+            prix_gramme_18k: puretes_devise.prix_gramme_18k,
             date_application: new Date().toISOString().split('T')[0],
             actif: true,
             source: "GoldAPI",
@@ -196,7 +223,7 @@ async function updateMetalPrice(type, metalName, pricePerTroyOzUSD, exchangeRate
         if (insertError) {
           console.error(`❌ Insert ${type} ${devise}:`, insertError.message);
         } else {
-          console.log(`✅ ${type} ${devise}/g: ${priceInDevise.toFixed(4)} (nouveau)`);
+          console.log(`✅ ${type} ${devise} — 24k:${puretes_devise.prix_gramme_24k} (nouveau)`);
         }
       }
     }
@@ -231,8 +258,8 @@ async function main() {
 
     // 4. Mettre à jour les prix pour chaque devise
     const results = [];
-    results.push(await updateMetalPrice("OR", "Gold", gold, exchangeRates, devises));
-    results.push(await updateMetalPrice("ARGENT", "Silver", silver, exchangeRates, devises));
+    results.push(await updateMetalPrice("OR",     "Gold",   gold,   exchangeRates, devises, gold_puretes));
+    results.push(await updateMetalPrice("ARGENT", "Silver", silver, exchangeRates, devises, null)); // ← null
 
     // 5. Résumé
     const successCount = results.filter(r => r).length;
