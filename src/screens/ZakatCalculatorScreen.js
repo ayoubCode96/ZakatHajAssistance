@@ -160,13 +160,17 @@ const ZakatCalculatorScreen = () => {
   const getNisabNotReachedBackground = () => currentTheme === "dark" ? "#1e3a1e" : "#f0f7f0";
   const getNisabNotReachedTextColor = () => currentTheme === "dark" ? "#a8c6a8" : "#166534";
 
-  const defaultPrices = useMemo(() => ({
-    gold24k: metalsPrices?.gold || 65.42,
-    gold18k: metalsPrices?.gold ? metalsPrices.gold * 0.75 : 49.07,
-    gold21k: metalsPrices?.gold ? metalsPrices.gold * 0.875 : 57.24,
-    silver999: metalsPrices?.silver || 0.82,
-    silver925: metalsPrices?.silver ? metalsPrices.silver * 0.925 : 0.76,
-  }), [metalsPrices]);
+const defaultPrices = useMemo(() => ({
+  gold:    metalsPrices?.gold    || 650,
+  gold24k: metalsPrices?.gold24k || metalsPrices?.gold || 650,
+  gold20k: metalsPrices?.gold20k || parseFloat(((metalsPrices?.gold || 650) * (20 / 24)).toFixed(4)),
+  gold18k: metalsPrices?.gold18k || parseFloat(((metalsPrices?.gold || 650) * 0.75).toFixed(4)),
+  gold21k: parseFloat(((metalsPrices?.gold || 650) * 0.875).toFixed(4)), // calcul interne
+  silver:  metalsPrices?.silver  || 8.5,
+  // argent pas de pureté
+  silver999: metalsPrices?.silver || 8.5,
+  silver925: metalsPrices?.silver ? metalsPrices.silver * 0.925 : 7.86,
+}), [metalsPrices]);
 
   const MALIKI_NISAB = {
     gold: 85,
@@ -187,14 +191,17 @@ const ZakatCalculatorScreen = () => {
     const totalMoney = cashValue + savingsValue + currentAccountsValue + fixedDepositsValue;
 
     const goldWeight = parseValue(currentFormData.goldWeight);
-    const goldValue = goldWeight > 0 ?
-      goldWeight * (currentFormData.goldPurity === "24k" ? defaultPrices.gold24k :
-                   currentFormData.goldPurity === "21k" ? defaultPrices.gold21k :
-                   defaultPrices.gold18k) : 0;
+    const goldValue = goldWeight > 0
+                    ? goldWeight * (
+                        formData.goldPurity === "24k" ? defaultPrices.gold24k :
+                        formData.goldPurity === "21k" ? defaultPrices.gold21k :
+                        formData.goldPurity === "20k" ? defaultPrices.gold20k :
+                        defaultPrices.gold18k
+                      )
+                    : 0;
 
     const silverWeight = parseValue(currentFormData.silverWeight);
-    const silverValue = silverWeight > 0 ?
-      silverWeight * (currentFormData.silverPurity === "999" ? defaultPrices.silver999 : defaultPrices.silver925) : 0;
+    const silverValue = silverWeight > 0 ? silverWeight * defaultPrices.silver999 : 0;
 
     const tradeGoodsValue = parseValue(currentFormData.tradeGoodsValue);
     const businessInventoryValue = parseValue(currentFormData.businessInventory);
@@ -747,52 +754,163 @@ const refreshActifsForYear = async (zakatAnnuelId) => {
 
           {/* Métaux précieux */}
           {activeTab === "metals" && (
-            <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("metals")}>
-                <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                    <Gem size={18} color={MALIKI_PRIMARY} />
-                  </View>
-                  <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("precious_metals")}</Text>
-                </View>
-                {expandedSections.metals ? <ChevronUp size={18} color={getSecondaryTextColor()} /> : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-              </TouchableOpacity>
-              {expandedSections.metals && (
-                <View style={styles.sectionContent}>
-                  <View style={styles.row}>
-                    <View style={styles.halfInput}>
-                      <InputField label={t("gold_weight")} value={formData.goldWeight} onChangeText={(v) => handleInputChange("goldWeight", v)} placeholder="0" keyboardType="numeric" unit="g" icon={Gem} />
-                    </View>
-                    <View style={styles.halfInput}>
-                      <Text style={[styles.pickerLabel, { color: getSecondaryTextColor() }]}>{t("purity")}</Text>
-                      <View style={styles.pickerButtons}>
-                        {["24k", "21k", "18k"].map(purity => (
-                          <TouchableOpacity key={purity} style={[styles.purityButton, formData.goldPurity === purity && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("goldPurity", purity)}>
-                            <Text style={[styles.purityText, formData.goldPurity === purity && { color: "#ffffff" }, { color: getSecondaryTextColor() }]}>{purity}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.row}>
-                    <View style={styles.halfInput}>
-                      <InputField label={t("silver_weight")} value={formData.silverWeight} onChangeText={(v) => handleInputChange("silverWeight", v)} placeholder="0" keyboardType="numeric" unit="g" icon={Coins} />
-                    </View>
-                    <View style={styles.halfInput}>
-                      <Text style={[styles.pickerLabel, { color: getSecondaryTextColor() }]}>{t("purity")}</Text>
-                      <View style={styles.pickerButtons}>
-                        {["999", "925"].map(purity => (
-                          <TouchableOpacity key={purity} style={[styles.purityButton, formData.silverPurity === purity && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("silverPurity", purity)}>
-                            <Text style={[styles.purityText, formData.silverPurity === purity && { color: "#ffffff" }, { color: getSecondaryTextColor() }]}>{purity}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              )}
+  <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
+    <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("metals")}>
+      <View style={styles.sectionHeaderLeft}>
+        <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
+          <Gem size={18} color={MALIKI_PRIMARY} />
+        </View>
+        <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("precious_metals")}</Text>
+      </View>
+      {expandedSections.metals
+        ? <ChevronUp   size={18} color={getSecondaryTextColor()} />
+        : <ChevronDown size={18} color={getSecondaryTextColor()} />}
+    </TouchableOpacity>
+
+    {expandedSections.metals && (
+      <View style={styles.sectionContent}>
+
+        {/* ── Bandeau prix live ── */}
+        <View style={[styles.pricesBanner, {
+          backgroundColor: MALIKI_PRIMARY + "10",
+          borderColor:     MALIKI_PRIMARY + "30",
+        }]}>
+          {/* OR */}
+          <View style={styles.priceItem}>
+            <View style={styles.priceHeader}>
+              <Gem size={13} color={MALIKI_SECONDARY} />
+              <Text style={[styles.priceLabel, { color: getSecondaryTextColor() }]}>
+                {t("gold")} 24k
+              </Text>
             </View>
-          )}
+            <Text style={[styles.priceValue, { color: MALIKI_SECONDARY }]}>
+              {formatCurrency(defaultPrices.gold24k)}/g
+            </Text>
+            <Text style={[styles.priceSub, { color: getSecondaryTextColor() }]}>
+              20k: {formatCurrency(defaultPrices.gold20k)} · 18k: {formatCurrency(defaultPrices.gold18k)}
+            </Text>
+          </View>
+
+          <View style={[styles.priceDivider, { backgroundColor: MALIKI_PRIMARY + "20" }]} />
+
+          {/* ARGENT */}
+          <View style={styles.priceItem}>
+            <View style={styles.priceHeader}>
+              <Coins size={13} color={getSecondaryTextColor()} />
+              <Text style={[styles.priceLabel, { color: getSecondaryTextColor() }]}>
+                {t("silver")}
+              </Text>
+            </View>
+            <Text style={[styles.priceValue, { color: getTextColor() }]}>
+              {formatCurrency(defaultPrices.silver999)}/g
+            </Text>
+            <Text style={[styles.priceSub, { color: getSecondaryTextColor() }]}>
+              {t("spot_price")}
+            </Text>
+          </View>
+        </View>
+
+        {/* ── OR : poids + sélecteur pureté ── */}
+        <View style={styles.row}>
+          <View style={styles.halfInput}>
+            <InputField
+              label={t("gold_weight")}
+              value={formData.goldWeight}
+              onChangeText={(v) => handleInputChange("goldWeight", v)}
+              placeholder="0"
+              keyboardType="numeric"
+              unit="g"
+              icon={Gem}
+            />
+          </View>
+<View style={styles.halfInput}>
+  <Text style={[styles.pickerLabel, { color: getSecondaryTextColor() }]}>
+    {t("purity")}
+  </Text>
+  <View style={styles.purityButtonsColumn}>
+    {[
+      { key: "18k", price: defaultPrices.gold18k },
+      { key: "20k", price: defaultPrices.gold20k },
+      { key: "24k", price: defaultPrices.gold24k },
+    ].map(({ key, price }) => (
+      <TouchableOpacity
+        key={key}
+        style={[
+          styles.purityButtonRow,
+          formData.goldPurity === key && { backgroundColor: MALIKI_PRIMARY },
+          { borderColor: formData.goldPurity === key ? MALIKI_PRIMARY : getBorderColor() },
+        ]}
+        onPress={() => handleInputChange("goldPurity", key)}
+      >
+        <Text style={[
+          styles.purityTextRow,
+          { color: formData.goldPurity === key ? "#ffffff" : getTextColor() },
+        ]}>
+          {key}
+        </Text>
+        <Text style={[
+          styles.purityPriceRow,
+          { color: formData.goldPurity === key ? "#ffffffCC" : getSecondaryTextColor() },
+        ]}>
+          {formatCurrency(price)}/g
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+</View>
+        </View>
+
+        {/* Valeur calculée OR */}
+        {parseFloat(formData.goldWeight) > 0 && (
+          <View style={[styles.computedValue, { backgroundColor: MALIKI_SECONDARY + "15" }]}>
+            <Text style={[styles.computedLabel, { color: getSecondaryTextColor() }]}>
+              {parseFloat(formData.goldWeight).toFixed(2)}g ×{" "}
+              {formatCurrency(
+                formData.goldPurity === "24k" ? defaultPrices.gold24k :
+                formData.goldPurity === "20k" ? defaultPrices.gold20k :
+                defaultPrices.gold18k
+              )}
+            </Text>
+            <Text style={[styles.computedTotal, { color: MALIKI_SECONDARY }]}>
+              = {formatCurrency(
+                parseFloat(formData.goldWeight) * (
+                  formData.goldPurity === "24k" ? defaultPrices.gold24k :
+                  formData.goldPurity === "20k" ? defaultPrices.gold20k :
+                  defaultPrices.gold18k
+                )
+              )}
+            </Text>
+          </View>
+        )}
+
+        {/* ── ARGENT : poids uniquement, sans sélecteur pureté ── */}
+        <InputField
+          label={t("silver_weight")}
+          value={formData.silverWeight}
+          onChangeText={(v) => handleInputChange("silverWeight", v)}
+          placeholder="0"
+          keyboardType="numeric"
+          unit="g"
+          icon={Coins}
+        />
+
+        {/* Valeur calculée ARGENT */}
+        {parseFloat(formData.silverWeight) > 0 && (
+          <View style={[styles.computedValue, { backgroundColor: getSecondaryTextColor() + "15" }]}>
+            <Text style={[styles.computedLabel, { color: getSecondaryTextColor() }]}>
+              {parseFloat(formData.silverWeight).toFixed(2)}g ×{" "}
+              {formatCurrency(defaultPrices.silver999)}
+            </Text>
+            <Text style={[styles.computedTotal, { color: getTextColor() }]}>
+              = {formatCurrency(parseFloat(formData.silverWeight) * defaultPrices.silver999)}
+            </Text>
+          </View>
+        )}
+
+      </View>
+    )}
+  </View>
+)}
 
           {/* Biens commerciaux */}
           {activeTab === "trade" && (
@@ -1487,6 +1605,84 @@ const styles = StyleSheet.create({
   infoModalButton: { marginTop: 24 },
   detailedBreakdown: { marginVertical: 20 },
   breakdownTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 16 },
+  pricesBanner: {
+  flexDirection:  "row",
+  borderRadius:   10,
+  borderWidth:    1,
+  padding:        12,
+  marginBottom:   16,
+  alignItems:     "center",
+},
+priceItem: {
+  flex:        1,
+  alignItems:  "center",
+},
+priceHeader: {
+  flexDirection:  "row",
+  alignItems:     "center",
+  gap:            4,
+  marginBottom:   4,
+},
+priceLabel: {
+  fontSize:   11,
+  fontWeight: "600",
+},
+priceValue: {
+  fontSize:   15,
+  fontWeight: "bold",
+},
+priceSub: {
+  fontSize:   9,
+  marginTop:  2,
+  textAlign:  "center",
+},
+priceDivider: {
+  width:          1,
+  height:         40,
+  marginHorizontal: 8,
+},
+purityPrice: {
+  fontSize:   9,
+  marginTop:  2,
+  textAlign:  "center",
+},
+computedValue: {
+  flexDirection:   "row",
+  justifyContent:  "space-between",
+  alignItems:      "center",
+  borderRadius:    8,
+  padding:         10,
+  marginBottom:    12,
+},
+computedLabel: {
+  fontSize: 12,
+},
+computedTotal: {
+  fontSize:   14,
+  fontWeight: "bold",
+},
+  // Styles à remplacer/ajouter
+purityButtonsColumn: {
+  flexDirection: "column",
+  gap: 6,
+},
+purityButtonRow: {
+  flexDirection:   "row",
+  justifyContent:  "space-between",
+  alignItems:      "center",
+  paddingHorizontal: 10,
+  paddingVertical:   7,
+  borderRadius:    8,
+  borderWidth:     1,
+},
+purityTextRow: {
+  fontSize:   13,
+  fontWeight: "700",
+},
+purityPriceRow: {
+  fontSize:   11,
+  fontWeight: "500",
+},
 });
 
 export default ZakatCalculatorScreen;

@@ -1,3 +1,4 @@
+// src/context/CurrencyContext.js
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { currencyService } from "../services/currencyService";
 import { locationService } from "../services/locationService";
@@ -6,18 +7,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const CurrencyContext = createContext();
 
 export const CurrencyProvider = ({ children }) => {
-  const [userCurrency, setUserCurrency] = useState("EUR");
+  const [userCurrency, setUserCurrency] = useState("MAD");
   const [userCountry, setUserCountry] = useState(null);
   const [metalsPrices, setMetalsPrices] = useState(null);
   const [exchangeRates, setExchangeRates] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialiser la localisation et la devise au démarrage
   useEffect(() => {
     initializeCurrency();
   }, []);
 
-  // Recharger les prix des métaux quand la devise change
   useEffect(() => {
     if (userCurrency) {
       loadMetalsPrices(userCurrency);
@@ -28,9 +27,8 @@ export const CurrencyProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      // 1. Essayer de charger la devise sauvegardée
       const savedCurrency = await AsyncStorage.getItem("userCurrency");
-      const savedCountry = await AsyncStorage.getItem("userCountry");
+      const savedCountry  = await AsyncStorage.getItem("userCountry");
 
       if (savedCurrency && savedCountry) {
         setUserCurrency(savedCurrency);
@@ -40,56 +38,40 @@ export const CurrencyProvider = ({ children }) => {
         return;
       }
 
-      // 2. Sinon, détecter la localisation
       const locationResult = await locationService.getCurrentLocation();
 
       if (locationResult.success) {
         const { latitude, longitude } = locationResult.location;
-
-        // Obtenir le pays depuis les coordonnées
-        const countryResult = await locationService.getCountryFromCoords(
-          latitude,
-          longitude
-        );
+        const countryResult = await locationService.getCountryFromCoords(latitude, longitude);
 
         if (countryResult.success) {
-          const countryCode = countryResult.countryCode;
-          const countryName = locationService.getCountryName(countryCode);
-
-          // Obtenir la devise du pays
-          const currencyResult =
-            locationService.getCurrencyByCountry(countryCode);
-          const currency = currencyResult.currency;
+          const countryCode  = countryResult.countryCode;
+          const countryName  = locationService.getCountryName(countryCode);
+          const currencyResult = locationService.getCurrencyByCountry(countryCode);
+          const currency     = currencyResult.currency;
 
           const countryInfo = {
-            code: countryCode,
-            name: countryName,
-            city: countryResult.city,
+            code:   countryCode,
+            name:   countryName,
+            city:   countryResult.city,
             region: countryResult.region,
           };
 
-          // Sauvegarder
           await AsyncStorage.setItem("userCurrency", currency);
-          await AsyncStorage.setItem(
-            "userCountry",
-            JSON.stringify(countryInfo)
-          );
+          await AsyncStorage.setItem("userCountry",  JSON.stringify(countryInfo));
 
           setUserCurrency(currency);
           setUserCountry(countryInfo);
-
-          // Charger les prix des métaux dans cette devise
           await loadMetalsPrices(currency);
         }
       } else {
-        // Par défaut si la localisation échoue
-        setUserCurrency("EUR");
-        await loadMetalsPrices("EUR");
+        setUserCurrency("MAD");
+        await loadMetalsPrices("MAD");
       }
     } catch (error) {
       console.error("Erreur initialisation devise:", error);
-      setUserCurrency("EUR");
-      await loadMetalsPrices("EUR");
+      setUserCurrency("MAD");
+      await loadMetalsPrices("MAD");
     } finally {
       setLoading(false);
     }
@@ -97,23 +79,23 @@ export const CurrencyProvider = ({ children }) => {
 
   const loadMetalsPrices = async (currency) => {
     try {
-      // Charger les prix des métaux DANS LA DEVISE LOCALE
-      const metalsPricesResult = await currencyService.getMetalsPrices(
-        currency
-      );
+      const result = await currencyService.getMetalsPrices(currency);
 
-      if (metalsPricesResult.success) {
+      if (result.success) {
         setMetalsPrices({
-          gold: metalsPricesResult.gold,
-          silver: metalsPricesResult.silver,
-          currency: metalsPricesResult.currency,
-          lastUpdated: metalsPricesResult.lastUpdated,
+          gold:        result.gold,
+          gold24k:     result.gold24k,
+          gold20k:     result.gold20k,
+          gold18k:     result.gold18k,
+          silver:      result.silver,
+          currency:    result.currency,
+          lastUpdated: result.lastUpdated,
+          isFallback:  result.isFallback || false,
         });
       }
 
-      // Charger les taux de change (pour référence si nécessaire)
-      const ratesResult = await currencyService.getExchangeRates("EUR");
-      if (ratesResult.success) {
+      const ratesResult = await currencyService.getExchangeRates?.("EUR");
+      if (ratesResult?.success) {
         setExchangeRates(ratesResult.rates);
       }
     } catch (error) {
@@ -122,6 +104,7 @@ export const CurrencyProvider = ({ children }) => {
   };
 
   const refreshData = async () => {
+    currencyService.clearCache(userCurrency);
     await loadMetalsPrices(userCurrency);
   };
 
@@ -129,13 +112,11 @@ export const CurrencyProvider = ({ children }) => {
     try {
       await AsyncStorage.setItem("userCurrency", newCurrency);
       setUserCurrency(newCurrency);
-      // Les prix des métaux seront rechargés automatiquement via useEffect
     } catch (error) {
       console.error("Erreur changement devise:", error);
     }
   };
 
-  // Formater un montant dans la devise actuelle
   const formatCurrency = (amount) => {
     return currencyService.formatCurrency(amount, userCurrency);
   };
