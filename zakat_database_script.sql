@@ -1,566 +1,505 @@
-    -- ============================================
-    -- Application Zakat - Script PostgreSQL Complet
-    -- Base de données pour Supabase
-    -- ============================================
-
-    -- ==========================================
-    -- SUPPRESSION DES TABLES (si existantes)
-    -- ==========================================
-    DROP TABLE IF EXISTS journal_activite CASCADE;
-    DROP TABLE IF EXISTS rappels CASCADE;
-    DROP TABLE IF EXISTS preferences_notification CASCADE;
-    DROP TABLE IF EXISTS paiement_zakat CASCADE;
-    DROP TABLE IF EXISTS beneficiaire CASCADE;
-    DROP TABLE IF EXISTS categorie_beneficiaire CASCADE;
-    DROP TABLE IF EXISTS zakat_annuel CASCADE;
-    DROP TABLE IF EXISTS dettes CASCADE;
-    DROP TABLE IF EXISTS zakat_actif CASCADE;
-    DROP TABLE IF EXISTS historique_parametrage CASCADE;
-    DROP TABLE IF EXISTS parametrage CASCADE;
-    DROP TABLE IF EXISTS historique_prix_metaux CASCADE;
-    DROP TABLE IF EXISTS prix_metaux_precieux CASCADE;
-    DROP TABLE IF EXISTS nisab_zakat CASCADE;
-    DROP TABLE IF EXISTS type_zakat CASCADE;
-    DROP TABLE IF EXISTS profil_utilisateur CASCADE;
-
-    -- ==========================================
-    -- TABLE 1: profil_utilisateur
-    -- ==========================================
-CREATE TABLE profils_utilisateurs (
-  id_utilisateur UUID REFERENCES auth.users PRIMARY KEY,
-  nom_complet TEXT,
-  email TEXT UNIQUE,
-  telephone TEXT,
-  langue TEXT DEFAULT 'fr',
-  theme TEXT DEFAULT 'system',
-  pays TEXT,
-  ville TEXT,
-  date_creation TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  date_mise_a_jour TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-    COMMENT ON TABLE profils_utilisateurs IS 'Gestion des comptes utilisateurs de l''application Zakat';
-    COMMENT ON COLUMN profils_utilisateurs.id_utilisateur IS 'Identifiant unique auto-incrémenté';
-    COMMENT ON COLUMN profils_utilisateurs.nom_complet IS 'Nom complet de l''utilisateur';
-    COMMENT ON COLUMN profils_utilisateurs.email IS 'Email unique pour connexion';
-    COMMENT ON COLUMN profil_utilisateur.telephone IS 'Numéro de téléphone pour contact/SMS';
-    COMMENT ON COLUMN profil_utilisateur.mot_de_passe IS 'Mot de passe crypté (bcrypt/argon2)';
-    COMMENT ON COLUMN profil_utilisateur.date_anniversaire_zakat IS 'Date hijri de début de son année Zakat (crucial!)';
-    COMMENT ON COLUMN profil_utilisateur.devise IS 'Devise préférée (MAD, EUR, USD)';
-    COMMENT ON COLUMN profil_utilisateur.statut IS 'ACTIF, INACTIF, SUSPENDU';
-
-    CREATE INDEX idx_profil_email ON profil_utilisateur(email);
-    CREATE INDEX idx_profil_statut ON profil_utilisateur(statut);
-
-    -- ==========================================
-    -- TABLE 2: type_zakat
-    -- ==========================================
-    CREATE TABLE type_zakat (
-        id SERIAL PRIMARY KEY,
-        nom_type VARCHAR(50) NOT NULL UNIQUE,
-        description TEXT,
-        taux_zakat DECIMAL(5,2) DEFAULT 2.50,
-        unite_mesure VARCHAR(20),
-        actif BOOLEAN DEFAULT TRUE,
-        ordre_affichage INT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    COMMENT ON TABLE type_zakat IS 'Types de Zakat selon la jurisprudence islamique';
-    COMMENT ON COLUMN type_zakat.nom_type IS 'OR, ARGENT, COMMERCE, BETAIL, AGRICULTURE, EPARGNE, CREANCES';
-    COMMENT ON COLUMN type_zakat.taux_zakat IS 'Pourcentage (2.5% standard, 5-10% agriculture)';
-    COMMENT ON COLUMN type_zakat.unite_mesure IS 'grammes, dirhams, têtes (bétail), kg (agriculture)';
-
-    INSERT INTO type_zakat (nom_type, description, taux_zakat, unite_mesure, ordre_affichage) VALUES
-    ('OR', 'Zakat sur l''or possédé (bijoux, lingots)', 2.50, 'grammes', 1),
-    ('ARGENT', 'Zakat sur l''argent possédé', 2.50, 'grammes', 2),
-    ('EPARGNE', 'Zakat sur l''épargne et liquidités', 2.50, 'MAD', 3),
-    ('COMMERCE', 'Zakat sur les biens commerciaux', 2.50, 'MAD', 4),
-    ('AGRICULTURE', 'Zakat sur les récoltes agricoles', 5.00, 'kg', 5),
-    ('BETAIL', 'Zakat sur le bétail (vaches, moutons, chameaux)', 2.50, 'têtes', 6),
-    ('CREANCES', 'Zakat sur les créances récupérables', 2.50, 'MAD', 7);
-
-    -- ==========================================
-    -- TABLE 3: nisab_zakat
-    -- ==========================================
-    CREATE TABLE nisab_zakat (
-        id SERIAL PRIMARY KEY,
-        type_zakat_id INT NOT NULL,
-        montant_nisab DECIMAL(15,4) NOT NULL,
-        unite VARCHAR(20) NOT NULL,
-        devise_reference VARCHAR(10) DEFAULT 'MAD',
-        date_debut DATE NOT NULL,
-        date_fin DATE,
-        source_religieuse TEXT,
-        notes TEXT,
-        actif BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (type_zakat_id) REFERENCES type_zakat(id) ON DELETE CASCADE
-    );
-
-    COMMENT ON TABLE nisab_zakat IS 'Seuils minimums (Nisab) pour chaque type de Zakat selon la Sunna';
-    COMMENT ON COLUMN nisab_zakat.montant_nisab IS 'Quantité minimum à posséder (ex: 85g or, 595g argent)';
-    COMMENT ON COLUMN nisab_zakat.source_religieuse IS 'Référence religieuse (Hadith, Ijma, Fatwa)';
-
-    CREATE INDEX idx_nisab_type ON nisab_zakat(type_zakat_id);
-    CREATE INDEX idx_nisab_actif ON nisab_zakat(actif);
-
-    INSERT INTO nisab_zakat (type_zakat_id, montant_nisab, unite, date_debut, source_religieuse) VALUES
-    (1, 85, 'grammes', '2024-01-01', 'Nisab de l''or: 85 grammes (20 dinars islamiques)'),
-    (2, 595, 'grammes', '2024-01-01', 'Nisab de l''argent: 595 grammes (200 dirhams islamiques)'),
-    (3, 50750, 'MAD', '2024-01-01', 'Équivalent de 85g d''or en dirhams'),
-    (4, 50750, 'MAD', '2024-01-01', 'Même nisab que l''épargne'),
-    (5, 653, 'kg', '2024-01-01', '5 wasqs = 653 kg de grains'),
-    (6, 30, 'têtes', '2024-01-01', 'Nisab pour vaches: 30 têtes'),
-    (7, 50750, 'MAD', '2024-01-01', 'Créances récupérables si > nisab');
-
-    -- ==========================================
-    -- TABLE 4: prix_metaux_precieux
-    -- ==========================================
-    CREATE TABLE prix_metaux_precieux (
-        id SERIAL PRIMARY KEY,
-        type_metal VARCHAR(20) NOT NULL,
-        prix_gramme DECIMAL(15,4) NOT NULL,
-        devise VARCHAR(10) DEFAULT 'MAD',
-        date_application DATE NOT NULL,
-        date_expiration DATE,
-        source VARCHAR(255),
-        type_prix VARCHAR(30) DEFAULT 'ACHAT',
-        actif BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    COMMENT ON TABLE prix_metaux_precieux IS 'Prix actuels de l''or et argent pour calculs Zakat';
-    COMMENT ON COLUMN prix_metaux_precieux.type_metal IS 'OR ou ARGENT';
-    COMMENT ON COLUMN prix_metaux_precieux.prix_gramme IS 'Prix par gramme en devise locale';
-    COMMENT ON COLUMN prix_metaux_precieux.actif IS 'Un seul prix actif par métal à la fois';
-
-    CREATE INDEX idx_prix_metal_actif ON prix_metaux_precieux(type_metal, actif);
-    CREATE INDEX idx_prix_date ON prix_metaux_precieux(date_application DESC);
-    CREATE UNIQUE INDEX idx_prix_actif_unique ON prix_metaux_precieux(type_metal, actif) WHERE actif = TRUE;
-
-    INSERT INTO prix_metaux_precieux (type_metal, prix_gramme, devise, date_application, source) VALUES
-    ('OR', 650.50, 'MAD', CURRENT_DATE, 'Banque Al-Maghrib'),
-    ('ARGENT', 8.20, 'MAD', CURRENT_DATE, 'Marché international');
-
-    -- ==========================================
-    -- TABLE 5: historique_prix_metaux
-    -- ==========================================
-    CREATE TABLE historique_prix_metaux (
-        id SERIAL PRIMARY KEY,
-        prix_metaux_id INT,
-        type_metal VARCHAR(20) NOT NULL,
-        ancien_prix DECIMAL(15,4),
-        nouveau_prix DECIMAL(15,4) NOT NULL,
-        pourcentage_variation DECIMAL(8,4),
-        devise VARCHAR(10) DEFAULT 'MAD',
-        date_changement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        modifie_par INT,
-        source_changement VARCHAR(50),
-        raison TEXT,
-        FOREIGN KEY (prix_metaux_id) REFERENCES prix_metaux_precieux(id) ON DELETE SET NULL,
-        FOREIGN KEY (modifie_par) REFERENCES profil_utilisateur(id) ON DELETE SET NULL
-    );
-
-    COMMENT ON TABLE historique_prix_metaux IS 'Historique complet des changements de prix or/argent';
-    COMMENT ON COLUMN historique_prix_metaux.pourcentage_variation IS 'Variation % par rapport prix précédent';
-
-    CREATE INDEX idx_historique_metal_date ON historique_prix_metaux(type_metal, date_changement DESC);
-
-    -- ==========================================
-    -- TABLE 6: parametrage
-    -- ==========================================
-    CREATE TABLE parametrage (
-        id SERIAL PRIMARY KEY,
-        nom_parametre VARCHAR(50) NOT NULL UNIQUE,
-        valeur VARCHAR(255) NOT NULL,
-        type_valeur VARCHAR(20) DEFAULT 'STRING',
-        description TEXT,
-        categorie VARCHAR(50),
-        modifiable_par_user BOOLEAN DEFAULT FALSE,
-        actif BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    COMMENT ON TABLE parametrage IS 'Paramètres généraux de configuration';
-
-    CREATE INDEX idx_parametrage_categorie ON parametrage(categorie);
-
-    INSERT INTO parametrage (nom_parametre, valeur, type_valeur, description, categorie) VALUES
-    ('TAUX_CHANGE_EUR_MAD', '10.65', 'NUMBER', 'Taux de change EUR vers MAD', 'CONVERSION'),
-    ('TAUX_CHANGE_USD_MAD', '9.85', 'NUMBER', 'Taux de change USD vers MAD', 'CONVERSION'),
-    ('ANNEE_HIJRI_EN_COURS', '1446', 'NUMBER', 'Année hijri en cours', 'CALENDRIER'),
-    ('POURCENTAGE_ALERTE_PRIX', '5.0', 'NUMBER', 'Seuil variation prix pour notifier', 'NOTIFICATION');
-
-    -- ==========================================
-    -- TABLE 7: historique_parametrage
-    -- ==========================================
-    CREATE TABLE historique_parametrage (
-        id SERIAL PRIMARY KEY,
-        parametrage_id INT NOT NULL,
-        ancienne_valeur VARCHAR(255),
-        nouvelle_valeur VARCHAR(255) NOT NULL,
-        date_changement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        modifie_par INT,
-        raison TEXT,
-        adresse_ip VARCHAR(45),
-        FOREIGN KEY (parametrage_id) REFERENCES parametrage(id) ON DELETE CASCADE,
-        FOREIGN KEY (modifie_par) REFERENCES profil_utilisateur(id) ON DELETE SET NULL
-    );
-
-    COMMENT ON TABLE historique_parametrage IS 'Historique modifications paramètres système';
-
-    CREATE INDEX idx_historique_param ON historique_parametrage(parametrage_id, date_changement DESC);
-
-    -- ==========================================
-    -- TABLE 8: zakat_actif
-    -- ==========================================
-    CREATE TABLE zakat_actif (
-        id SERIAL PRIMARY KEY,
-        utilisateur_id INT NOT NULL,
-        type_zakat_id INT NOT NULL,
-        nom_actif VARCHAR(100),
-        quantite DECIMAL(15,4),
-        valeur_unitaire DECIMAL(15,2),
-        valeur_totale DECIMAL(15,2),
-        date_acquisition DATE,
-        date_ajout TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        actif BOOLEAN DEFAULT TRUE,
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (utilisateur_id) REFERENCES profil_utilisateur(id) ON DELETE CASCADE,
-        FOREIGN KEY (type_zakat_id) REFERENCES type_zakat(id) ON DELETE RESTRICT
-    );
-
-    COMMENT ON TABLE zakat_actif IS 'Biens possédés par utilisateurs soumis à Zakat';
-
-    CREATE INDEX idx_actif_user ON zakat_actif(utilisateur_id, actif);
-    CREATE INDEX idx_actif_type ON zakat_actif(type_zakat_id);
-
-    -- ==========================================
-    -- TABLE 9: dettes
-    -- ==========================================
-    CREATE TABLE dettes (
-        id SERIAL PRIMARY KEY,
-        utilisateur_id INT NOT NULL,
-        montant_dette DECIMAL(15,2) NOT NULL,
-        type_dette VARCHAR(50),
-        creancier VARCHAR(150),
-        date_contraction DATE,
-        date_echeance DATE,
-        deductible BOOLEAN DEFAULT TRUE,
-        rembourse BOOLEAN DEFAULT FALSE,
-        montant_rembourse DECIMAL(15,2) DEFAULT 0,
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (utilisateur_id) REFERENCES profil_utilisateur(id) ON DELETE CASCADE
-    );
-
-    COMMENT ON TABLE dettes IS 'Dettes déductibles avant calcul Zakat';
-    COMMENT ON COLUMN dettes.deductible IS 'Selon Fiqh: court terme déductible, long terme débat';
-
-    CREATE INDEX idx_dettes_user ON dettes(utilisateur_id, deductible, rembourse);
-
-    -- ==========================================
-    -- TABLE 10: zakat_annuel
-    -- ==========================================
-    CREATE TABLE zakat_annuel (
-        id SERIAL PRIMARY KEY,
-        utilisateur_id INT NOT NULL,
-        annee_hijri INT NOT NULL,
-        date_debut DATE NOT NULL,
-        date_fin DATE NOT NULL,
-        montant_total_actifs DECIMAL(15,2),
-        montant_total_dettes DECIMAL(15,2),
-        montant_imposable DECIMAL(15,2),
-        nisab_applique DECIMAL(15,2),
-        type_nisab_applique VARCHAR(20),
-        depasse_nisab BOOLEAN,
-        montant_zakat_calcule DECIMAL(15,2),
-        montant_zakat_paye DECIMAL(15,2) DEFAULT 0,
-        montant_restant DECIMAL(15,2),
-        statut VARCHAR(30) DEFAULT 'NON_PAYE',
-        date_calcul TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        recalcule_auto BOOLEAN DEFAULT FALSE,
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (utilisateur_id) REFERENCES profil_utilisateur(id) ON DELETE CASCADE
-    );
-
-    COMMENT ON TABLE zakat_annuel IS 'Calculs annuels Zakat par utilisateur/année hijri';
-    COMMENT ON COLUMN zakat_annuel.montant_imposable IS 'Richesse nette = Actifs - Dettes';
-    COMMENT ON COLUMN zakat_annuel.depasse_nisab IS 'TRUE si doit payer Zakat (richesse >= nisab)';
-
-    CREATE INDEX idx_zakat_user_annee ON zakat_annuel(utilisateur_id, annee_hijri);
-    CREATE INDEX idx_zakat_statut ON zakat_annuel(statut);
-    CREATE UNIQUE INDEX idx_zakat_user_annee_unique ON zakat_annuel(utilisateur_id, annee_hijri);
-
-    -- ==========================================
-    -- TABLE 11: categorie_beneficiaire
-    -- ==========================================
-    CREATE TABLE categorie_beneficiaire (
-        id SERIAL PRIMARY KEY,
-        nom_categorie VARCHAR(50) NOT NULL UNIQUE,
-        nom_arabe VARCHAR(100),
-        nom_francais VARCHAR(100),
-        description TEXT,
-        verset_reference VARCHAR(100),
-        ordre_priorite INT,
-        actif BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    COMMENT ON TABLE categorie_beneficiaire IS '8 catégories bénéficiaires Zakat (Coran 9:60)';
-
-    INSERT INTO categorie_beneficiaire (nom_categorie, nom_arabe, nom_francais, description, verset_reference, ordre_priorite) VALUES
-    ('FUQARA', 'الفقراء', 'Les pauvres', 'Ceux sans ressources suffisantes', 'Sourate 9:60', 1),
-    ('MASAKIN', 'المساكين', 'Les nécessiteux', 'Ceux dans besoin extrême', 'Sourate 9:60', 2),
-    ('AMILIN', 'العاملون عليها', 'Collecteurs', 'Collecteurs et distributeurs Zakat', 'Sourate 9:60', 3),
-    ('MUALLAF', 'المؤلفة قلوبهم', 'Nouveaux musulmans', 'Renforcer leur foi', 'Sourate 9:60', 4),
-    ('RIQAB', 'في الرقاب', 'Affranchissement', 'Libération captifs', 'Sourate 9:60', 5),
-    ('GHARIMIN', 'الغارمين', 'Endettés', 'Accablés par dettes', 'Sourate 9:60', 6),
-    ('FISABILILLAH', 'في سبيل الله', 'Voie d''Allah', 'Efforts cause Allah', 'Sourate 9:60', 7),
-    ('IBNSABIL', 'ابن السبيل', 'Voyageurs', 'Voyageurs démunis', 'Sourate 9:60', 8);
-
-    -- ==========================================
-    -- TABLE 12: beneficiaire
-    -- ==========================================
-    CREATE TABLE beneficiaire (
-        id SERIAL PRIMARY KEY,
-        categorie_beneficiaire_id INT NOT NULL,
-        nom VARCHAR(150) NOT NULL,
-        type_beneficiaire VARCHAR(30),
-        telephone VARCHAR(20),
-        email VARCHAR(150),
-        adresse TEXT,
-        ville VARCHAR(100),
-        pays VARCHAR(50) DEFAULT 'Maroc',
-        identifiant_fiscal VARCHAR(50),
-        notes TEXT,
-        verifie BOOLEAN DEFAULT FALSE,
-        actif BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (categorie_beneficiaire_id) REFERENCES categorie_beneficiaire(id) ON DELETE RESTRICT
-    );
-
-    COMMENT ON TABLE beneficiaire IS 'Personnes/organisations bénéficiaires Zakat';
-    COMMENT ON COLUMN beneficiaire.verifie IS 'Si vérifié comme éligible à recevoir Zakat';
-
-    CREATE INDEX idx_beneficiaire_categorie ON beneficiaire(categorie_beneficiaire_id, actif);
-    CREATE INDEX idx_beneficiaire_ville ON beneficiaire(ville);
-
-    -- ==========================================
-    -- TABLE 13: paiement_zakat
-    -- ==========================================
-    CREATE TABLE paiement_zakat (
-        id SERIAL PRIMARY KEY,
-        zakat_annuel_id INT NOT NULL,
-        beneficiaire_id INT NOT NULL,
-        montant_paye DECIMAL(15,2) NOT NULL,
-        date_paiement DATE NOT NULL,
-        moyen_paiement VARCHAR(30),
-        reference_paiement VARCHAR(100),
-        justificatif VARCHAR(255),
-        lieu_paiement VARCHAR(150),
-        temoin_present VARCHAR(150),
-        notes TEXT,
-        valide BOOLEAN DEFAULT TRUE,
-        date_enregistrement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (zakat_annuel_id) REFERENCES zakat_annuel(id) ON DELETE CASCADE,
-        FOREIGN KEY (beneficiaire_id) REFERENCES beneficiaire(id) ON DELETE RESTRICT
-    );
-
-    COMMENT ON TABLE paiement_zakat IS 'Historique complet paiements Zakat';
-    COMMENT ON COLUMN paiement_zakat.temoin_present IS 'Nom témoin lors paiement (recommandé Islam)';
-
-    CREATE INDEX idx_paiement_zakat ON paiement_zakat(zakat_annuel_id);
-    CREATE INDEX idx_paiement_beneficiaire ON paiement_zakat(beneficiaire_id);
-    CREATE INDEX idx_paiement_date ON paiement_zakat(date_paiement DESC);
-
-    -- ==========================================
-    -- TABLE 14: preferences_notification
-    -- ==========================================
-    CREATE TABLE preferences_notification (
-        id SERIAL PRIMARY KEY,
-        utilisateur_id INT NOT NULL UNIQUE,
-        rappel_calcul_annuel BOOLEAN DEFAULT TRUE,
-        jours_avant_calcul INT DEFAULT 30,
-        rappel_paiement BOOLEAN DEFAULT TRUE,
-        frequence_rappel_paiement VARCHAR(20) DEFAULT 'MENSUEL',
-        rappel_maj_actifs BOOLEAN DEFAULT TRUE,
-        frequence_maj_actifs VARCHAR(20) DEFAULT 'TRIMESTRIEL',
-        rappel_prix_or BOOLEAN DEFAULT FALSE,
-        seuil_changement_prix DECIMAL(5,2) DEFAULT 5.00,
-        canal_prefere VARCHAR(20) DEFAULT 'EMAIL',
-        actif BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (utilisateur_id) REFERENCES profil_utilisateur(id) ON DELETE CASCADE
-    );
-
-    COMMENT ON TABLE preferences_notification IS 'Préférences notifications par utilisateur';
-
-    CREATE INDEX idx_notif_user ON preferences_notification(utilisateur_id);
-
-    -- ==========================================
-    -- TABLE 15: rappels
-    -- ==========================================
-    CREATE TABLE rappels (
-        id SERIAL PRIMARY KEY,
-        utilisateur_id INT NOT NULL,
-        zakat_annuel_id INT,
-        type_rappel VARCHAR(50) NOT NULL,
-        titre VARCHAR(150) NOT NULL,
-        message TEXT NOT NULL,
-        date_prevu TIMESTAMP NOT NULL,
-        date_envoi TIMESTAMP,
-        date_lu TIMESTAMP,
-        statut VARCHAR(20) DEFAULT 'EN_ATTENTE',
-        canal VARCHAR(20),
-        priorite VARCHAR(20) DEFAULT 'NORMALE',
-        lien_action VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (utilisateur_id) REFERENCES profil_utilisateur(id) ON DELETE CASCADE,
-        FOREIGN KEY (zakat_annuel_id) REFERENCES zakat_annuel(id) ON DELETE SET NULL
-    );
-
-    COMMENT ON TABLE rappels IS 'Notifications envoyées aux utilisateurs';
-
-    CREATE INDEX idx_rappel_user ON rappels(utilisateur_id, statut);
-    CREATE INDEX idx_rappel_prevu ON rappels(date_prevu);
-
-    -- ==========================================
-    -- TABLE 16: journal_activite
-    -- ==========================================
-    CREATE TABLE journal_activite (
-        id SERIAL PRIMARY KEY,
-        utilisateur_id INT NOT NULL,
-        type_action VARCHAR(50) NOT NULL,
-        table_affectee VARCHAR(50),
-        id_enregistrement INT,
-        details_action JSONB,
-        adresse_ip INET,
-        user_agent TEXT,
-        localisation VARCHAR(100),
-        succes BOOLEAN DEFAULT TRUE,
-        message_erreur TEXT,
-        date_action TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (utilisateur_id) REFERENCES profil_utilisateur(id) ON DELETE CASCADE
-    );
-
-    COMMENT ON TABLE journal_activite IS 'Audit complet actions utilisateurs';
-
-    CREATE INDEX idx_journal_user ON journal_activite(utilisateur_id, date_action DESC);
-    CREATE INDEX idx_journal_type ON journal_activite(type_action);
-    CREATE INDEX idx_journal_date ON journal_activite(date_action DESC);
-
-    -- ==========================================
-    -- TRIGGERS AUTOMATIQUES
-    -- ==========================================
-
-    -- Trigger: Mise à jour updated_at
-    CREATE OR REPLACE FUNCTION update_updated_at_column()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        NEW.updated_at = CURRENT_TIMESTAMP;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    CREATE TRIGGER trigger_profil_updated BEFORE UPDATE ON profil_utilisateur FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_type_zakat_updated BEFORE UPDATE ON type_zakat FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_nisab_updated BEFORE UPDATE ON nisab_zakat FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_prix_updated BEFORE UPDATE ON prix_metaux_precieux FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_param_updated BEFORE UPDATE ON parametrage FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_actif_updated BEFORE UPDATE ON zakat_actif FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_dettes_updated BEFORE UPDATE ON dettes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_zakat_updated BEFORE UPDATE ON zakat_annuel FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_benef_updated BEFORE UPDATE ON beneficiaire FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_paie_updated BEFORE UPDATE ON paiement_zakat FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    CREATE TRIGGER trigger_notif_updated BEFORE UPDATE ON preferences_notification FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-    -- Trigger: Archiver changements prix
-    CREATE OR REPLACE FUNCTION archiver_changement_prix()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        IF OLD.prix_gramme IS DISTINCT FROM NEW.prix_gramme THEN
-            INSERT INTO historique_prix_metaux (
-                prix_metaux_id, type_metal, ancien_prix, nouveau_prix, 
-                devise, source_changement
-            ) VALUES (
-                NEW.id, NEW.type_metal, OLD.prix_gramme, NEW.prix_gramme,
-                NEW.devise, 'AUTO'
-            );
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    CREATE TRIGGER trigger_archiver_prix
-    AFTER UPDATE ON prix_metaux_precieux
-    FOR EACH ROW
-    WHEN (OLD.prix_gramme IS DISTINCT FROM NEW.prix_gramme)
-    EXECUTE FUNCTION archiver_changement_prix();
-
-    -- Trigger: Calculer variation prix
-    CREATE OR REPLACE FUNCTION calculer_variation_prix()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        IF NEW.ancien_prix IS NOT NULL AND NEW.ancien_prix > 0 THEN
-            NEW.pourcentage_variation := ((NEW.nouveau_prix - NEW.ancien_prix) / NEW.ancien_prix) * 100;
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    CREATE TRIGGER trigger_calculer_variation
-    BEFORE INSERT ON historique_prix_metaux
-    FOR EACH ROW
-    EXECUTE FUNCTION calculer_variation_prix();
-
-    -- Trigger: MAJ montant_restant zakat
-    CREATE OR REPLACE FUNCTION calculer_montant_restant()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        UPDATE zakat_annuel 
-        SET montant_zakat_paye = (
-            SELECT COALESCE(SUM(montant_paye), 0) 
-            FROM paiement_zakat 
-            WHERE zakat_annuel_id = NEW.zakat_annuel_id 
-            AND valide = TRUE
-        ),
-        montant_restant = montant_zakat_calcule - (
-            SELECT COALESCE(SUM(montant_paye), 0) 
-            FROM paiement_zakat 
-            WHERE zakat_annuel_id = NEW.zakat_annuel_id 
-            AND valide = TRUE
-        )
-        WHERE id = NEW.zakat_annuel_id;
-        
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    CREATE TRIGGER trigger_calculer_restant
-    AFTER INSERT OR UPDATE ON paiement_zakat
-    FOR EACH ROW
-    EXECUTE FUNCTION calculer_montant_restant();
-
-
-
-
-ALTER TABLE zakat_actif ADD COLUMN zakat_annuel_id INT REFERENCES zakat_annuel(id) ON DELETE CASCADE;
-CREATE INDEX idx_actif_year ON zakat_actif(zakat_annuel_id);
-    -- ==========================================
-    -- FIN DU SCRIPT
-    -- ==========================================
+create table public.zakat_annuel (
+  id serial not null,
+  utilisateur_id uuid not null,
+  annee_hijri integer not null,
+  date_debut date not null,
+  date_fin date not null,
+  montant_total_actifs numeric(15, 2) null,
+  montant_total_dettes numeric(15, 2) null,
+  montant_imposable numeric(15, 2) null,
+  nisab_applique numeric(15, 2) null,
+  type_nisab_applique character varying(20) null,
+  depasse_nisab boolean null,
+  montant_zakat_calcule numeric(15, 2) null,
+  montant_zakat_paye numeric(15, 2) null default 0,
+  montant_restant numeric(15, 2) null,
+  statut character varying(30) null default 'NON_PAYE'::character varying,
+  date_calcul timestamp without time zone null default CURRENT_TIMESTAMP,
+  recalcule_auto boolean null default false,
+  notes text null,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  visible boolean null default true,
+  raison_masquage text null,
+  constraint zakat_annuel_pkey primary key (id),
+  constraint zakat_annuel_utilisateur_id_fkey foreign KEY (utilisateur_id) references profils_utilisateurs (id_utilisateur) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_zakat_visible on public.zakat_annuel using btree (utilisateur_id, visible) TABLESPACE pg_default;
+
+create index IF not exists idx_zakat_user_annee on public.zakat_annuel using btree (utilisateur_id, annee_hijri) TABLESPACE pg_default;
+
+create index IF not exists idx_zakat_statut on public.zakat_annuel using btree (statut) TABLESPACE pg_default;
+
+create unique INDEX IF not exists idx_zakat_user_annee_unique on public.zakat_annuel using btree (utilisateur_id, annee_hijri) TABLESPACE pg_default;
+
+create trigger trigger_zakat_updated BEFORE
+update on zakat_annuel for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.zakat_actif (
+  id serial not null,
+  utilisateur_id uuid not null,
+  type_zakat_id integer not null,
+  nom_actif character varying(100) null,
+  quantite numeric(15, 4) null,
+  valeur_unitaire numeric(15, 2) null,
+  valeur_totale numeric(15, 2) null,
+  date_acquisition date null,
+  date_ajout timestamp without time zone null default CURRENT_TIMESTAMP,
+  actif boolean null default true,
+  notes text null,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  zakat_annuel_id integer null,
+  constraint zakat_actif_pkey primary key (id),
+  constraint zakat_actif_type_zakat_id_fkey foreign KEY (type_zakat_id) references type_zakat (id) on delete RESTRICT,
+  constraint zakat_actif_utilisateur_id_fkey foreign KEY (utilisateur_id) references profils_utilisateurs (id_utilisateur) on delete CASCADE,
+  constraint zakat_actif_zakat_annuel_id_fkey foreign KEY (zakat_annuel_id) references zakat_annuel (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_actif_user on public.zakat_actif using btree (utilisateur_id, actif) TABLESPACE pg_default;
+
+create index IF not exists idx_actif_type on public.zakat_actif using btree (type_zakat_id) TABLESPACE pg_default;
+
+create index IF not exists idx_actif_year on public.zakat_actif using btree (zakat_annuel_id) TABLESPACE pg_default;
+
+create trigger trigger_actif_updated BEFORE
+update on zakat_actif for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.type_zakat (
+  id serial not null,
+  nom_type character varying(50) not null,
+  description text null,
+  taux_zakat numeric(5, 2) null default 2.50,
+  unite_mesure character varying(20) null,
+  actif boolean null default true,
+  ordre_affichage integer null,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint type_zakat_pkey primary key (id),
+  constraint type_zakat_nom_type_key unique (nom_type)
+) TABLESPACE pg_default;
+
+create trigger trigger_type_zakat_updated BEFORE
+update on type_zakat for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.rituels_hajj (
+  id_rituel uuid not null default gen_random_uuid (),
+  id_utilisateur uuid not null,
+  nom_rituel text not null,
+  ordre_rituel integer not null,
+  termine boolean null default false,
+  date_realisation timestamp with time zone null,
+  lieu text null,
+  notes text null,
+  photos jsonb null,
+  date_creation timestamp with time zone null default now(),
+  date_mise_a_jour timestamp with time zone null default now(),
+  constraint rituels_hajj_pkey primary key (id_rituel),
+  constraint rituels_hajj_id_utilisateur_fkey foreign KEY (id_utilisateur) references profils_utilisateurs (id_utilisateur)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_rituels_hajj_utilisateur_termine on public.rituels_hajj using btree (id_utilisateur, termine) TABLESPACE pg_default;
+
+create trigger trigger_mise_a_jour_rituels_hajj BEFORE
+update on rituels_hajj for EACH row
+execute FUNCTION mettre_a_jour_date_modification ();
+
+create table public.profils_utilisateurs (
+  id_utilisateur uuid not null,
+  nom_complet text null,
+  email text null,
+  telephone text null,
+  langue text null default 'fr'::text,
+  theme text null default 'system'::text,
+  pays text null,
+  ville text null,
+  date_creation timestamp with time zone null default now(),
+  date_mise_a_jour timestamp with time zone null default now(),
+  constraint profils_utilisateurs_pkey primary key (id_utilisateur),
+  constraint profils_utilisateurs_email_key unique (email),
+  constraint profils_utilisateurs_email_unique unique (email),
+  constraint profils_utilisateurs_id_utilisateur_fkey foreign KEY (id_utilisateur) references auth.users (id)
+) TABLESPACE pg_default;
+
+create unique INDEX IF not exists profils_utilisateurs_email_idx on public.profils_utilisateurs using btree (email) TABLESPACE pg_default;
+
+create trigger trigger_mise_a_jour_profils BEFORE
+update on profils_utilisateurs for EACH row
+execute FUNCTION mettre_a_jour_date_modification ();
+
+create trigger trigger_profil_updated BEFORE
+update on profils_utilisateurs for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.prix_metaux_precieux (
+  id serial not null,
+  type_metal character varying(20) not null,
+  prix_gramme numeric(15, 4) not null,
+  devise character varying(10) null default 'MAD'::character varying,
+  date_application date not null,
+  date_expiration date null,
+  source character varying(255) null,
+  type_prix character varying(30) null default 'ACHAT'::character varying,
+  actif boolean null default true,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  prix_gramme_24k numeric(15, 4) null,
+  prix_gramme_20k numeric(15, 4) null,
+  prix_gramme_18k numeric(15, 4) null,
+  constraint prix_metaux_precieux_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_prix_date on public.prix_metaux_precieux using btree (date_application desc) TABLESPACE pg_default;
+
+create unique INDEX IF not exists idx_prix_actif_unique on public.prix_metaux_precieux using btree (type_metal, devise, actif) TABLESPACE pg_default
+where
+  (actif = true);
+
+create index IF not exists idx_prix_metal_actif on public.prix_metaux_precieux using btree (type_metal, devise, actif) TABLESPACE pg_default;
+
+create index IF not exists idx_prix_devise on public.prix_metaux_precieux using btree (devise) TABLESPACE pg_default;
+
+create trigger trigger_archiver_prix
+after INSERT
+or
+update on prix_metaux_precieux for EACH row
+execute FUNCTION archiver_prix ();
+
+create trigger trigger_prix_updated BEFORE
+update on prix_metaux_precieux for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.preferences_notification (
+  id serial not null,
+  utilisateur_id uuid not null,
+  rappel_calcul_annuel boolean null default true,
+  jours_avant_calcul integer null default 30,
+  rappel_paiement boolean null default true,
+  frequence_rappel_paiement character varying(20) null default 'MENSUEL'::character varying,
+  rappel_maj_actifs boolean null default true,
+  frequence_maj_actifs character varying(20) null default 'TRIMESTRIEL'::character varying,
+  rappel_prix_or boolean null default false,
+  seuil_changement_prix numeric(5, 2) null default 5.00,
+  canal_prefere character varying(20) null default 'EMAIL'::character varying,
+  actif boolean null default true,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint preferences_notification_pkey primary key (id),
+  constraint preferences_notification_utilisateur_id_key unique (utilisateur_id),
+  constraint preferences_notification_utilisateur_id_fkey foreign KEY (utilisateur_id) references profils_utilisateurs (id_utilisateur) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_notif_user on public.preferences_notification using btree (utilisateur_id) TABLESPACE pg_default;
+
+create trigger trigger_notif_updated BEFORE
+update on preferences_notification for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.password_reset_codes (
+  id uuid not null default gen_random_uuid (),
+  email text not null,
+  code text not null,
+  created_at timestamp with time zone null default now(),
+  expires_at timestamp with time zone null default (now() + '00:15:00'::interval),
+  used boolean null default false,
+  constraint password_reset_codes_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_reset_email on public.password_reset_codes using btree (email) TABLESPACE pg_default;
+
+create index IF not exists idx_reset_code on public.password_reset_codes using btree (code) TABLESPACE pg_default;
+
+create index IF not exists idx_reset_expires on public.password_reset_codes using btree (expires_at) TABLESPACE pg_default;
+
+create table public.parametrage (
+  id serial not null,
+  nom_parametre character varying(50) not null,
+  valeur character varying(255) not null,
+  type_valeur character varying(20) null default 'STRING'::character varying,
+  description text null,
+  categorie character varying(50) null,
+  modifiable_par_user boolean null default false,
+  actif boolean null default true,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint parametrage_pkey primary key (id),
+  constraint parametrage_nom_parametre_key unique (nom_parametre)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_parametrage_categorie on public.parametrage using btree (categorie) TABLESPACE pg_default;
+
+create trigger trigger_param_updated BEFORE
+update on parametrage for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.paiement_zakat (
+  id serial not null,
+  zakat_annuel_id integer not null,
+  beneficiaire_id integer not null,
+  montant_paye numeric(15, 2) not null,
+  date_paiement date not null,
+  moyen_paiement character varying(30) null,
+  reference_paiement character varying(100) null,
+  justificatif character varying(255) null,
+  lieu_paiement character varying(150) null,
+  temoin_present character varying(150) null,
+  notes text null,
+  valide boolean null default true,
+  date_enregistrement timestamp without time zone null default CURRENT_TIMESTAMP,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint paiement_zakat_pkey primary key (id),
+  constraint paiement_zakat_beneficiaire_id_fkey foreign KEY (beneficiaire_id) references beneficiaire (id) on delete RESTRICT,
+  constraint paiement_zakat_zakat_annuel_id_fkey foreign KEY (zakat_annuel_id) references zakat_annuel (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_paiement_zakat on public.paiement_zakat using btree (zakat_annuel_id) TABLESPACE pg_default;
+
+create index IF not exists idx_paiement_beneficiaire on public.paiement_zakat using btree (beneficiaire_id) TABLESPACE pg_default;
+
+create index IF not exists idx_paiement_date on public.paiement_zakat using btree (date_paiement desc) TABLESPACE pg_default;
+
+create trigger trigger_paie_updated BEFORE
+update on paiement_zakat for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.objectifs_spirituels (
+  id_objectif uuid not null default gen_random_uuid (),
+  id_utilisateur uuid not null,
+  type_objectif text not null,
+  valeur_cible integer not null,
+  valeur_actuelle integer null default 0,
+  periode text not null,
+  date_debut timestamp with time zone null default now(),
+  date_fin timestamp with time zone null,
+  est_termine boolean null default false,
+  rappel_active boolean null default true,
+  date_creation timestamp with time zone null default now(),
+  date_mise_a_jour timestamp with time zone null default now(),
+  constraint objectifs_spirituels_pkey primary key (id_objectif),
+  constraint objectifs_spirituels_id_utilisateur_fkey foreign KEY (id_utilisateur) references profils_utilisateurs (id_utilisateur)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_objectifs_spirituels_utilisateur_type on public.objectifs_spirituels using btree (id_utilisateur, type_objectif) TABLESPACE pg_default;
+
+create trigger trigger_mise_a_jour_objectifs_spirituels BEFORE
+update on objectifs_spirituels for EACH row
+execute FUNCTION mettre_a_jour_date_modification ();
+
+create table public.notifications (
+  id_notification uuid not null default gen_random_uuid (),
+  id_utilisateur uuid not null,
+  titre text not null,
+  message text not null,
+  type_notification text not null,
+  date_planification timestamp with time zone not null,
+  est_envoye boolean null default false,
+  est_lu boolean null default false,
+  url_action text null,
+  metadonnees jsonb null,
+  date_creation timestamp with time zone null default now(),
+  constraint notifications_pkey primary key (id_notification),
+  constraint notifications_id_utilisateur_fkey foreign KEY (id_utilisateur) references profils_utilisateurs (id_utilisateur)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_notifications_utilisateur_planifie on public.notifications using btree (id_utilisateur, date_planification) TABLESPACE pg_default;
+
+create table public.nisab_zakat (
+  id serial not null,
+  type_zakat_id integer not null,
+  montant_nisab numeric(15, 4) not null,
+  unite character varying(20) not null,
+  devise_reference character varying(10) null default 'MAD'::character varying,
+  date_debut date not null,
+  date_fin date null,
+  source_religieuse text null,
+  notes text null,
+  actif boolean null default true,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint nisab_zakat_pkey primary key (id),
+  constraint nisab_zakat_type_zakat_id_fkey foreign KEY (type_zakat_id) references type_zakat (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_nisab_type on public.nisab_zakat using btree (type_zakat_id) TABLESPACE pg_default;
+
+create index IF not exists idx_nisab_actif on public.nisab_zakat using btree (actif) TABLESPACE pg_default;
+
+create trigger trigger_nisab_updated BEFORE
+update on nisab_zakat for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.horaires_priere (
+  id_horaire uuid not null default gen_random_uuid (),
+  id_utilisateur uuid not null,
+  date date not null,
+  fajr timestamp with time zone null,
+  lever_soleil timestamp with time zone null,
+  dhuhr timestamp with time zone null,
+  asr timestamp with time zone null,
+  maghrib timestamp with time zone null,
+  isha timestamp with time zone null,
+  ville text null,
+  pays text null,
+  methode_calcul text null,
+  date_creation timestamp with time zone null default now(),
+  constraint horaires_priere_pkey primary key (id_horaire),
+  constraint horaires_priere_id_utilisateur_fkey foreign KEY (id_utilisateur) references profils_utilisateurs (id_utilisateur)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_horaires_priere_utilisateur_date on public.horaires_priere using btree (id_utilisateur, date) TABLESPACE pg_default;
+
+create table public.historique_zakat (
+  id_paiement uuid not null default gen_random_uuid (),
+  id_utilisateur uuid not null,
+  montant numeric(15, 2) not null,
+  devise text null default 'EUR'::text,
+  type_paiement text not null,
+  date_paiement timestamp with time zone null default now(),
+  type_beneficiaire text null,
+  nom_beneficiaire text null,
+  details_beneficiaire jsonb null,
+  notes text null,
+  paiement_recurrent boolean null default false,
+  date_prochain_paiement timestamp with time zone null,
+  date_creation timestamp with time zone null default now(),
+  constraint historique_zakat_pkey primary key (id_paiement),
+  constraint historique_zakat_id_utilisateur_fkey foreign KEY (id_utilisateur) references profils_utilisateurs (id_utilisateur)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_historique_zakat_utilisateur_date on public.historique_zakat using btree (id_utilisateur, date_paiement) TABLESPACE pg_default;
+
+create table public.historique_prix_metaux (
+  id serial not null,
+  prix_metaux_id integer null,
+  type_metal character varying(20) not null,
+  ancien_prix numeric(15, 4) null,
+  nouveau_prix numeric(15, 4) not null,
+  pourcentage_variation numeric(8, 4) null,
+  devise character varying(10) null default 'MAD'::character varying,
+  date_changement timestamp without time zone null default CURRENT_TIMESTAMP,
+  modifie_par uuid null,
+  source_changement character varying(50) null,
+  raison text null,
+  ancien_prix_24k numeric(15, 4) null,
+  nouveau_prix_24k numeric(15, 4) null,
+  ancien_prix_20k numeric(15, 4) null,
+  nouveau_prix_20k numeric(15, 4) null,
+  ancien_prix_18k numeric(15, 4) null,
+  nouveau_prix_18k numeric(15, 4) null,
+  constraint historique_prix_metaux_pkey primary key (id),
+  constraint historique_prix_metaux_modifie_par_fkey foreign KEY (modifie_par) references profils_utilisateurs (id_utilisateur) on delete set null,
+  constraint historique_prix_metaux_prix_metaux_id_fkey foreign KEY (prix_metaux_id) references prix_metaux_precieux (id) on delete set null
+) TABLESPACE pg_default;
+
+create index IF not exists idx_historique_metal_date on public.historique_prix_metaux using btree (type_metal, date_changement desc) TABLESPACE pg_default;
+
+create trigger trigger_calculer_variation BEFORE INSERT on historique_prix_metaux for EACH row
+execute FUNCTION calculer_variation_prix ();
+
+create table public.directions_qibla (
+  id_direction uuid not null default gen_random_uuid (),
+  id_utilisateur uuid not null,
+  latitude numeric(10, 6) not null,
+  longitude numeric(10, 6) not null,
+  direction_qibla numeric(5, 2) not null,
+  ville text null,
+  pays text null,
+  est_actuelle boolean null default false,
+  date_creation timestamp with time zone null default now(),
+  constraint directions_qibla_pkey primary key (id_direction),
+  constraint directions_qibla_id_utilisateur_fkey foreign KEY (id_utilisateur) references profils_utilisateurs (id_utilisateur)
+) TABLESPACE pg_default;
+
+create table public.dettes (
+  id serial not null,
+  utilisateur_id uuid not null,
+  montant_dette numeric(15, 2) not null,
+  type_dette character varying(50) null,
+  creancier character varying(150) null,
+  date_contraction date null,
+  date_echeance date null,
+  deductible boolean null default true,
+  rembourse boolean null default false,
+  montant_rembourse numeric(15, 2) null default 0,
+  notes text null,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint dettes_pkey primary key (id),
+  constraint dettes_utilisateur_id_fkey foreign KEY (utilisateur_id) references profils_utilisateurs (id_utilisateur) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_dettes_user on public.dettes using btree (utilisateur_id, deductible, rembourse) TABLESPACE pg_default;
+
+create trigger trigger_dettes_updated BEFORE
+update on dettes for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.checklist_hajj (
+  id_element uuid not null default gen_random_uuid (),
+  id_utilisateur uuid not null,
+  id_item integer not null,
+  categorie text not null,
+  nom_element text not null,
+  description text null,
+  termine boolean null default false,
+  date_limite timestamp with time zone null,
+  est_important boolean null default false,
+  ordre_tri integer null default 0,
+  date_creation timestamp with time zone null default now(),
+  date_mise_a_jour timestamp with time zone null default now(),
+  constraint checklist_hajj_pkey primary key (id_element),
+  constraint checklist_hajj_id_utilisateur_fkey foreign KEY (id_utilisateur) references profils_utilisateurs (id_utilisateur)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_checklist_hajj_utilisateur_categorie on public.checklist_hajj using btree (id_utilisateur, categorie) TABLESPACE pg_default;
+
+create trigger trigger_mise_a_jour_checklist_hajj BEFORE
+update on checklist_hajj for EACH row
+execute FUNCTION mettre_a_jour_date_modification ();
+
+create table public.categorie_beneficiaire (
+  id serial not null,
+  nom_categorie character varying(50) not null,
+  nom_arabe character varying(100) null,
+  nom_francais character varying(100) null,
+  description text null,
+  verset_reference character varying(100) null,
+  ordre_priorite integer null,
+  actif boolean null default true,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint categorie_beneficiaire_pkey primary key (id),
+  constraint categorie_beneficiaire_nom_categorie_key unique (nom_categorie)
+) TABLESPACE pg_default;
+
+create table public.beneficiaire (
+  id serial not null,
+  categorie_beneficiaire_id integer not null,
+  nom character varying(150) not null,
+  type_beneficiaire character varying(30) null,
+  telephone character varying(20) null,
+  email character varying(150) null,
+  adresse text null,
+  ville character varying(100) null,
+  pays character varying(50) null default 'Maroc'::character varying,
+  identifiant_fiscal character varying(50) null,
+  notes text null,
+  verifie boolean null default false,
+  actif boolean null default true,
+  created_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone null default CURRENT_TIMESTAMP,
+  constraint beneficiaire_pkey primary key (id),
+  constraint beneficiaire_categorie_beneficiaire_id_fkey foreign KEY (categorie_beneficiaire_id) references categorie_beneficiaire (id) on delete RESTRICT
+) TABLESPACE pg_default;
+
+create index IF not exists idx_beneficiaire_categorie on public.beneficiaire using btree (categorie_beneficiaire_id, actif) TABLESPACE pg_default;
+
+create index IF not exists idx_beneficiaire_ville on public.beneficiaire using btree (ville) TABLESPACE pg_default;
+
+create trigger trigger_benef_updated BEFORE
+update on beneficiaire for EACH row
+execute FUNCTION update_updated_at_column ();

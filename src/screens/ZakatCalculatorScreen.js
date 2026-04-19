@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-
 import {
   View,
   Text,
@@ -13,8 +12,7 @@ import {
   Animated,
   Platform,
   KeyboardAvoidingView,
-  FlatList,
-  ActivityIndicator
+  ActivityIndicator,
 } from "react-native";
 import { useAppTranslation } from "../hooks/useTranslation";
 import { useTheme } from "../context/ThemeContext";
@@ -23,650 +21,329 @@ import { useAlert } from "../context/AlertContext";
 import { zakatService } from '../services/zakatService';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
-
 import {
-  Calculator,
-  Coins,
-  Gem,
-  DollarSign,
-  TrendingUp,
-  Scale,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  Info,
-  BookOpen,
-  Banknote,
-  Warehouse,
-  CreditCard,
-  Leaf,
-  Gem as Diamond,
-  Package,
-  Building,
-  Wallet,
-  ShoppingCart,
-  Percent,
-  Target,
-  Crown,
-  Sparkles,
-  Bike,
-  GitMerge,
-  Receipt,
-  Settings,
-  Sliders,
-  MapPin,
+  Calculator, Coins, Gem, DollarSign, TrendingUp, Scale, Clock,
+  CheckCircle, AlertCircle, ChevronDown, ChevronUp, Info, BookOpen,
+  Banknote, Warehouse, CreditCard, Leaf, Gem as Diamond, Package,
+  Building, Wallet, ShoppingCart, Percent, Target, Crown, Sparkles,
+  Bike, Receipt, Settings, Sliders, MapPin,
 } from "lucide-react-native";
 import InputField from "../components/InputField";
 import Button from "../components/Button";
-import { getHawlStatus, checkExistingZakatForYear } from '../utils/zakatUtils';
+import { getHawlStatus, checkExistingZakatForYear, getCurrentHijriYearr } from '../utils/zakatUtils';
 import { LinearGradient } from "expo-linear-gradient";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const MALIKI_PRIMARY = "#1a5d1a";
-const MALIKI_SECONDARY = "#d4af37";
-const MALIKI_ACCENT = "#8b4513";
-const MALIKI_LIGHT = "#f0f7f0";
-const MALIKI_DARK = "#0a2f0a";
+
+// ─────────────────────────────────────────────
+// DESIGN TOKENS
+// ─────────────────────────────────────────────
+const COLORS = {
+  primary:        "#1a5d1a",
+  primaryLight:   "#2e7d32",
+  primaryDark:    "#0d3d0d",
+  primaryMuted:   "#4a8c4a",
+  gold:           "#c9991a",
+  goldLight:      "#d4af37",
+  goldPale:       "#f5e99a",
+  accent:         "#8b4513",
+  success:        "#16a34a",
+  successBg:      "#dcfce7",
+  successText:    "#14532d",
+  warning:        "#d97706",
+  warningBg:      "#fef3c7",
+  warningText:    "#92400e",
+  danger:         "#dc2626",
+  dangerBg:       "#fee2e2",
+  dangerText:     "#991b1b",
+  lightBg:        "#f0f7f0",
+  lightBg2:       "#e8f2e8",
+  lightCard:      "#ffffff",
+  lightBorder:    "#c8ddc8",
+  lightText:      "#1a2a1a",
+  lightTextSec:   "#4a6b4a",
+  lightTextTer:   "#7a9b7a",
+  darkBg:         "#0c1f0c",
+  darkBg2:        "#112011",
+  darkCard:       "#172317",
+  darkCard2:      "#1e2e1e",
+  darkBorder:     "#2a3f2a",
+  darkText:       "#e8f0e8",
+  darkTextSec:    "#9ebf9e",
+  darkTextTer:    "#6a8f6a",
+};
 
 const ZakatCalculatorScreen = () => {
   const { t } = useAppTranslation();
   const { currentTheme } = useTheme();
   const { alert, success, error: showError, confirm } = useAlert();
-  const {
-    userCurrency,
-    metalsPrices,
-    formatCurrency,
-    refreshData,
-    userCountry,
-    userCity,
-  } = useCurrency();
+  const { userCurrency, metalsPrices, formatCurrency, refreshData, userCountry } = useCurrency();
   const { user } = useAuth();
 
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [actifsHistory, setActifsHistory] = useState([]);
-  const [zakatHistory, setZakatHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [historyFilterTab, setHistoryFilterTab] = useState("all");
+  const isDark = currentTheme === "dark";
 
-  // ✅ FIX 1: Default hawl to completed=true
-  // If user has no date_anniversaire_zakat → first registration → hawl considered complete
+  const th = {
+    bg:        () => isDark ? COLORS.darkBg       : COLORS.lightBg,
+    bg2:       () => isDark ? COLORS.darkBg2      : COLORS.lightBg2,
+    card:      () => isDark ? COLORS.darkCard      : COLORS.lightCard,
+    card2:     () => isDark ? COLORS.darkCard2     : "#f7faf7",
+    border:    () => isDark ? COLORS.darkBorder    : COLORS.lightBorder,
+    text:      () => isDark ? COLORS.darkText      : COLORS.lightText,
+    textSec:   () => isDark ? COLORS.darkTextSec   : COLORS.lightTextSec,
+    textTer:   () => isDark ? COLORS.darkTextTer   : COLORS.lightTextTer,
+    primaryColor: () => isDark ? "#4daf52" : COLORS.primary,
+    nisabBg:   () => isDark ? "#1a2e1a" : "#eef7ee",
+    nisabText: () => isDark ? "#7fba7f" : "#1a5d1a",
+    hawlBg:    () => isDark ? "#2a1e00" : COLORS.warningBg,
+    hawlText:  () => isDark ? "#f5c542" : COLORS.warning,
+    gradientDue:    () => isDark ? [COLORS.darkBg2, "#1a3a1a"] : ["#eaf6ea", "#d4ecce"],
+    gradientHawl:   () => isDark ? ["#2a1e00", "#3a2800"] : [COLORS.warningBg, "#fde68a"],
+    gradientNisab:  () => isDark ? [COLORS.darkBg2, "#1a2e1a"] : ["#eef7ee", "#d8edd8"],
+    gradientNone:   () => isDark ? [COLORS.darkCard, COLORS.darkCard2] : ["#f4f9f4", "#e8f2e8"],
+  };
+
+  const [saving, setSaving]                 = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(false);
+  const [refreshing, setRefreshing]         = useState(false);
+
+  const [showResultsModal, setShowResultsModal]           = useState(false);
+  const [showSettingsModal, setShowSettingsModal]         = useState(false);
+  const [showConfirmUpdateModal, setShowConfirmUpdateModal] = useState(false);
+  const [existingZakatInfo, setExistingZakatInfo]         = useState(null);
+  const [existingZakatId, setExistingZakatId]             = useState(null);
+
   const [hawlStatus, setHawlStatus] = useState({
-    completed: true,      // ← TRUE by default (not false)
-    daysRemaining: 0,
-    nextAnniversary: null,
-    message: ""
+    completed: true, daysRemaining: 0, nextAnniversary: null, message: "",
   });
 
   const [activeTab, setActiveTab] = useState("money");
   const [expandedSections, setExpandedSections] = useState({
-    money: true,
-    metals: false,
-    trade: false,
-    agriculture: false,
-    livestock: false,
-    debts: false,
-    other: false,
+    money: true, metals: false, trade: false,
+    agriculture: false, livestock: false, debts: false, other: false,
   });
 
-  const [formData, setFormData] = useState({
-    cash: "",
-    savings: "",
-    currentAccounts: "",
-    fixedDeposits: "",
-    goldWeight: "",
-    goldPurity: "24k",
-    silverWeight: "",
-    silverPurity: "925",
-    tradeGoodsValue: "",
-    businessInventory: "",
-    rentalProperties: "",
-    vehiclesValue: "",
-    cropsWeight: "",
-    irrigationType: "rain",
-    cropsMarketValue: "",
-    camelsCount: "",
-    cowsCount: "",
-    goatsCount: "",
-    sheepCount: "",
-    receivables: "",
-    doubtfulReceivables: "",
-    debts: "",
-    miningOutput: "",
-    foundTreasure: "",
-    nisabBase: "gold",
-    includeAllReceivables: false,
-    includeAllProperties: true,
-  });
-
-  const [results, setResults] = useState(null);
-  const [calculationSteps, setCalculationSteps] = useState([]);
-  const [showResultsModal, setShowResultsModal] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showMadhabInfo, setShowMadhabInfo] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const calculateTimeoutRef = useRef(null);
-  const lastFormDataRef = useRef(formData);
-  const scrollViewRef = useRef(null);
-
-  const getBackgroundColor = () => currentTheme === "dark" ? MALIKI_DARK : MALIKI_LIGHT;
-  const getCardColor = () => currentTheme === "dark" ? "#1a2a1a" : "#ffffff";
-  const getTextColor = () => currentTheme === "dark" ? "#e8edf5ff" : "#1a2a1a";
-  const getSecondaryTextColor = () => currentTheme === "dark" ? "#a8c6a8" : "#4a6b4a";
-  const getBorderColor = () => currentTheme === "dark" ? "#334155" : "#e2e8f0";
-  const getNisabNotReachedBackground = () => currentTheme === "dark" ? "#1e3a1e" : "#f0f7f0";
-  const getNisabNotReachedTextColor = () => currentTheme === "dark" ? "#a8c6a8" : "#166534";
-
-const defaultPrices = useMemo(() => ({
-  gold:    metalsPrices?.gold    || 650,
-  gold24k: metalsPrices?.gold24k || metalsPrices?.gold || 650,
-  gold20k: metalsPrices?.gold20k || parseFloat(((metalsPrices?.gold || 650) * (20 / 24)).toFixed(4)),
-  gold18k: metalsPrices?.gold18k || parseFloat(((metalsPrices?.gold || 650) * 0.75).toFixed(4)),
-  gold21k: parseFloat(((metalsPrices?.gold || 650) * 0.875).toFixed(4)), // calcul interne
-  silver:  metalsPrices?.silver  || 8.5,
-  // argent pas de pureté
-  silver999: metalsPrices?.silver || 8.5,
-  silver925: metalsPrices?.silver ? metalsPrices.silver * 0.925 : 7.86,
-}), [metalsPrices]);
-
-  const MALIKI_NISAB = {
-    gold: 85,
-    silver: 595,
-    crops: 653,
-    camels: 5,
-    cows: 30,
-    sheepGoats: 40,
+  const defaultFormData = {
+    cash: "", savings: "", currentAccounts: "", fixedDeposits: "",
+    goldWeight: "", goldPurity: "24k", silverWeight: "", silverPurity: "925",
+    tradeGoodsValue: "", businessInventory: "", rentalProperties: "", vehiclesValue: "",
+    cropsWeight: "", irrigationType: "rain", cropsMarketValue: "",
+    camelsCount: "", cowsCount: "", goatsCount: "", sheepCount: "",
+    receivables: "", doubtfulReceivables: "", debts: "",
+    miningOutput: "", foundTreasure: "",
+    nisabBase: "gold", includeAllReceivables: false, includeAllProperties: true,
   };
 
+  const [formData, setFormData] = useState(defaultFormData);
+  const [results, setResults]   = useState(null);
+
+  const fadeAnim            = useRef(new Animated.Value(0)).current;
+  const calculateTimeoutRef = useRef(null);
+  const scrollViewRef       = useRef(null);
+
+  const defaultPrices = useMemo(() => ({
+    gold:      metalsPrices?.gold    || 650,
+    gold24k:   metalsPrices?.gold24k || metalsPrices?.gold || 650,
+    gold20k:   metalsPrices?.gold20k || parseFloat(((metalsPrices?.gold || 650) * (20 / 24)).toFixed(4)),
+    gold18k:   metalsPrices?.gold18k || parseFloat(((metalsPrices?.gold || 650) * 0.75).toFixed(4)),
+    gold21k:   parseFloat(((metalsPrices?.gold || 650) * 0.875).toFixed(4)),
+    silver:    metalsPrices?.silver  || 8.5,
+    silver999: metalsPrices?.silver  || 8.5,
+    silver925: metalsPrices?.silver  ? metalsPrices.silver * 0.925 : 7.86,
+  }), [metalsPrices]);
+
+  const MALIKI_NISAB = { gold: 85, silver: 595, crops: 653, camels: 5, cows: 30, sheepGoats: 40 };
+
   const calculateMalikiZakat = (currentFormData = formData) => {
-    const parseValue = (val) => Math.max(0, parseFloat(val || 0));
-
-    const cashValue = parseValue(currentFormData.cash);
-    const savingsValue = parseValue(currentFormData.savings);
-    const currentAccountsValue = parseValue(currentFormData.currentAccounts);
-    const fixedDepositsValue = parseValue(currentFormData.fixedDeposits);
-    const totalMoney = cashValue + savingsValue + currentAccountsValue + fixedDepositsValue;
-
-    const goldWeight = parseValue(currentFormData.goldWeight);
-    const goldValue = goldWeight > 0
-                    ? goldWeight * (
-                        formData.goldPurity === "24k" ? defaultPrices.gold24k :
-                        formData.goldPurity === "21k" ? defaultPrices.gold21k :
-                        formData.goldPurity === "20k" ? defaultPrices.gold20k :
-                        defaultPrices.gold18k
-                      )
-                    : 0;
-
-    const silverWeight = parseValue(currentFormData.silverWeight);
-    const silverValue = silverWeight > 0 ? silverWeight * defaultPrices.silver999 : 0;
-
-    const tradeGoodsValue = parseValue(currentFormData.tradeGoodsValue);
-    const businessInventoryValue = parseValue(currentFormData.businessInventory);
-    const rentalPropertiesValue = parseValue(currentFormData.rentalProperties);
-    const vehiclesValue = parseValue(currentFormData.vehiclesValue);
-    const totalTradeGoods = tradeGoodsValue + businessInventoryValue + rentalPropertiesValue + vehiclesValue;
-
-    const cropsWeight = parseValue(currentFormData.cropsWeight);
-    const cropsValue = cropsWeight > 0 ?
-      (parseValue(currentFormData.cropsMarketValue) || cropsWeight * 0.5) : 0;
-
-    const camelsCount = parseValue(currentFormData.camelsCount);
-    const cowsCount = parseValue(currentFormData.cowsCount);
-    const goatsCount = parseValue(currentFormData.goatsCount);
-    const sheepCount = parseValue(currentFormData.sheepCount);
-    const livestockValue =
-      (camelsCount * 2500) +
-      (cowsCount * 1200) +
-      (goatsCount * 150) +
-      (sheepCount * 120);
-
-    const receivables = parseValue(currentFormData.receivables);
-    const doubtfulReceivables = parseValue(currentFormData.doubtfulReceivables);
-    const totalReceivables = currentFormData.includeAllReceivables ?
-      receivables + doubtfulReceivables : receivables;
-
-    const debts = parseValue(currentFormData.debts);
-    const miningOutput = parseValue(currentFormData.miningOutput);
-    const foundTreasure = parseValue(currentFormData.foundTreasure);
-
-    const totalAssets =
-      totalMoney + goldValue + silverValue + totalTradeGoods +
-      cropsValue + livestockValue + totalReceivables + miningOutput + foundTreasure;
-
-    const totalDeductions = debts;
-    const netWorth = totalAssets - totalDeductions;
-
-    const nisabThreshold = currentFormData.nisabBase === "gold" ?
-      MALIKI_NISAB.gold * defaultPrices.gold24k :
-      MALIKI_NISAB.silver * defaultPrices.silver999;
-
-    const hawlCompleted = hawlStatus.completed;
+    const p = (val) => Math.max(0, parseFloat(val || 0));
+    const totalMoney = p(currentFormData.cash) + p(currentFormData.savings) + p(currentFormData.currentAccounts) + p(currentFormData.fixedDeposits);
+    const goldWeight = p(currentFormData.goldWeight);
+    const goldValue  = goldWeight > 0 ? goldWeight * (
+      currentFormData.goldPurity === "24k" ? defaultPrices.gold24k :
+      currentFormData.goldPurity === "21k" ? defaultPrices.gold21k :
+      currentFormData.goldPurity === "20k" ? defaultPrices.gold20k : defaultPrices.gold18k
+    ) : 0;
+    const silverValue  = p(currentFormData.silverWeight) > 0 ? p(currentFormData.silverWeight) * defaultPrices.silver999 : 0;
+    const totalTradeGoods = p(currentFormData.tradeGoodsValue) + p(currentFormData.businessInventory) + p(currentFormData.rentalProperties) + p(currentFormData.vehiclesValue);
+    const cropsWeight = p(currentFormData.cropsWeight);
+    const cropsValue  = cropsWeight > 0 ? (p(currentFormData.cropsMarketValue) || cropsWeight * 0.5) : 0;
+    const livestockValue = (p(currentFormData.camelsCount) * 2500) + (p(currentFormData.cowsCount) * 1200) + (p(currentFormData.goatsCount) * 150) + (p(currentFormData.sheepCount) * 120);
+    const totalReceivables = currentFormData.includeAllReceivables ? p(currentFormData.receivables) + p(currentFormData.doubtfulReceivables) : p(currentFormData.receivables);
+    const miningOutput  = p(currentFormData.miningOutput);
+    const foundTreasure = p(currentFormData.foundTreasure);
+    const totalAssets   = totalMoney + goldValue + silverValue + totalTradeGoods + cropsValue + livestockValue + totalReceivables + miningOutput + foundTreasure;
+    const totalDeductions = p(currentFormData.debts);
+    const netWorth     = totalAssets - totalDeductions;
+    const nisabThreshold = currentFormData.nisabBase === "gold" ? MALIKI_NISAB.gold * defaultPrices.gold24k : MALIKI_NISAB.silver * defaultPrices.silver999;
     const isNisabReached = netWorth >= nisabThreshold;
-
+    const hawlCompleted  = hawlStatus.completed;
     let zakatAmount = 0;
-    let breakdown = [];
-
     if (hawlCompleted && isNisabReached) {
-      const standardZakat = (totalMoney + goldValue + silverValue + totalTradeGoods + totalReceivables) * 0.025;
-      const cropsZakat = cropsValue * (currentFormData.irrigationType === "rain" ? 0.1 : 0.05);
+      const standardZakat  = (totalMoney + goldValue + silverValue + totalTradeGoods + totalReceivables) * 0.025;
+      const cropsZakat     = cropsValue * (currentFormData.irrigationType === "rain" ? 0.1 : 0.05);
       const livestockZakat = livestockValue * 0.025;
-      const miningZakat = miningOutput * 0.025;
-      const treasureZakat = foundTreasure * 0.2;
-
-      zakatAmount = standardZakat + cropsZakat + livestockZakat + miningZakat + treasureZakat;
-
-      breakdown = [
-        { category: t("money_and_metals"), amount: standardZakat, percentage: "2.5%" },
-        { category: t("crops"), amount: cropsZakat, percentage: currentFormData.irrigationType === "rain" ? "10%" : "5%" },
-        { category: t("livestock"), amount: livestockZakat, percentage: "2.5%" },
-        { category: t("vehicles"), amount: 0, percentage: "Inclus dans biens commerciaux" },
-        { category: t("mining"), amount: miningZakat, percentage: "2.5%" },
-        { category: t("treasure"), amount: treasureZakat, percentage: "20%" },
-      ];
+      zakatAmount = standardZakat + cropsZakat + livestockZakat + miningOutput * 0.025 + foundTreasure * 0.2;
     }
-
-    return {
-      totalAssets,
-      totalDeductions,
-      netWorth,
-      nisabThreshold,
-      nisabBase: currentFormData.nisabBase,
-      isNisabReached,
-      hawlCompleted,
-      zakatAmount,
-      breakdown,
-      isZakatDue: hawlCompleted && isNisabReached && zakatAmount > 0,
-    };
+    return { totalAssets, totalDeductions, netWorth, nisabThreshold, isNisabReached, hawlCompleted, zakatAmount, isZakatDue: hawlCompleted && isNisabReached && zakatAmount > 0 };
   };
 
   useEffect(() => {
     if (calculateTimeoutRef.current) clearTimeout(calculateTimeoutRef.current);
-
     calculateTimeoutRef.current = setTimeout(() => {
-      const newResults = calculateMalikiZakat(formData);
-      setResults(newResults);
-
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-
-      lastFormDataRef.current = formData;
+      setResults(calculateMalikiZakat(formData));
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     }, 500);
+    return () => { if (calculateTimeoutRef.current) clearTimeout(calculateTimeoutRef.current); };
+  }, [formData, hawlStatus]);
 
-    return () => {
-      if (calculateTimeoutRef.current) clearTimeout(calculateTimeoutRef.current);
-    };
-  }, [formData, hawlStatus]); // ✅ Also re-calculate when hawlStatus changes
-
-  // ✅ FIX 2: Correct table name (profils_utilisateurs) and column (id_utilisateur)
-  // ✅ FIX 3: Default to completed=true if no date set (first registration)
   useEffect(() => {
-    const loadHawlStatus = async () => {
+    const load = async () => {
       if (!user) return;
-
       try {
-        const { data: profile, error } = await supabase
-          .from('profils_utilisateurs')        // ← correct table
-          .select('date_anniversaire_zakat')
-          .eq('id_utilisateur', user.id)       // ← correct column
-          .single();
-
-        if (error || !profile) {
-          // Query failed or no profile → keep default (completed=true)
-          return;
-        }
-
-        if (!profile.date_anniversaire_zakat) {
-          // No anniversary date set → first registration → hawl considered complete
-          setHawlStatus({
-            completed: true,
-            daysRemaining: 0,
-            nextAnniversary: null,
-            message: "Premier enregistrement — Hawl considéré complété"
-          });
-          return;
-        }
-
-        // Has a date → calculate real hawl status
-        const status = getHawlStatus(profile.date_anniversaire_zakat);
-        setHawlStatus(status);
-      } catch (e) {
-        console.error('Erreur chargement hawl:', e);
-        // On error → keep default completed=true (safe fallback)
-      }
+        const { data: profile } = await supabase.from('profils_utilisateurs').select('date_anniversaire_zakat').eq('id_utilisateur', user.id).single();
+        if (profile?.date_anniversaire_zakat) setHawlStatus(getHawlStatus(profile.date_anniversaire_zakat));
+        else setHawlStatus({ completed: true, daysRemaining: 0, nextAnniversary: null, message: "" });
+      } catch { setHawlStatus({ completed: true, daysRemaining: 0, nextAnniversary: null, message: "" }); }
     };
-
-    loadHawlStatus();
+    load();
   }, [user]);
 
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setExpandedSections(prev => ({ ...prev, [tabId]: true }));
+  useEffect(() => {
+    const prefill = async () => {
+      if (!user) return;
+      setPrefillLoading(true);
+      try {
+        const result = await zakatService.loadExistingActifsForYear(user.id);
+        if (result.success && result.data?.length > 0) {
+          setExistingZakatId(result.zakatAnnuelId || null);
+          setFormData(prev => ({ ...prev, ...zakatService.actifsToFormData(result.data) }));
+        }
+      } catch (e) { console.error(e); } finally { setPrefillLoading(false); }
+    };
+    prefill();
+  }, [user]);
+
+  const handleSaveCalculation = async () => {
+    if (!user) { showError(t('error'), t('login_to_save')); return; }
+    if (!results || results.netWorth === 0) { showError(t('error'), t('no_calculation_to_save')); return; }
+    setSaving(true);
+    try {
+      const checkResult = await zakatService.checkExistingZakatForCurrentYear(user.id);
+      if (checkResult.exists && checkResult.data) {
+        setExistingZakatInfo(checkResult.data);
+        setShowConfirmUpdateModal(true);
+        setSaving(false);
+        return;
+      }
+      await _doSave();
+    } catch (err) { showError(t('error'), err.message); setSaving(false); }
+  };
+
+  const _doSave = async () => {
+    setSaving(true);
+    try {
+      const saveResult = await zakatService.saveCompleteCalculation(user.id, formData, results, defaultPrices);
+      if (!saveResult.success) throw new Error(saveResult.error);
+      success(t('success'), results.isZakatDue
+        ? `${t('zakat_due_label')} : ${formatCurrency(results.zakatAmount)}`
+        : t('calculation_saved_zakat'));
+      const reloaded = await zakatService.loadExistingActifsForYear(user.id);
+      if (reloaded.success && reloaded.zakatAnnuelId) setExistingZakatId(reloaded.zakatAnnuelId);
+    } catch (err) { showError(t('error'), err.message); } finally { setSaving(false); }
   };
 
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleSaveCalculation = async () => {
-  if (!user) {
-    showError(t("error"), "Vous devez être connecté pour sauvegarder");
-    return;
-  }
-
-  if (!results || results.netWorth === 0) {
-    showError(t("error"), "Aucun calcul à sauvegarder");
-    return;
-  }
-
-  try {
-    const currentHijriYear = getCurrentHijriYear(); // import depuis zakatUtils
-
-    // Chercher si un enregistrement existe déjà pour cette année
-    const { data: existing } = await supabase
-      .from("zakat_annuel")
-      .select("id, statut, montant_zakat_paye")
-      .eq("utilisateur_id", user.id)
-      .eq("annee_hijri", currentHijriYear)
-      .single();
-
-    if (existing) {
-      // ✅ UPDATE au lieu d'INSERT
-      confirm(
-        t("warning"),
-        `Un calcul existe pour l'année ${currentHijriYear}H. Voulez-vous le mettre à jour ?`,
-        async () => {
-          await updateExistingZakat(existing.id, existing.montant_zakat_paye || 0);
-        }
-      );
-    } else {
-      // Nouveau calcul
-      const saveResult = await zakatService.saveCompleteCalculation(
-  user.id, formData, results, defaultPrices
-);
-if (!saveResult.success) throw new Error(saveResult.error);
-
-// ✅ Message adapté selon nisab atteint ou non
-if (saveResult.data?.alreadyExists) {
-  success(
-    t("success"),
-    results.isNisabReached
-      ? `Calcul mis à jour !\nZakat due : ${formatCurrency(results.zakatAmount)}`
-      : `Calcul mis à jour.\nNisab non atteint — aucune Zakat due.`
-  );
-} else {
-  success(
-    t("success"),
-    results.isZakatDue
-      ? `Calcul sauvegardé !\nZakat : ${formatCurrency(results.zakatAmount)}`
-      : `Calcul sauvegardé.\nPas de Zakat due.`
-  );
-}
-resetCalculator();
-    }
-  } catch (error) {
-    showError(t("error"), error.message || "Erreur lors de la sauvegarde");
-  }
-};
-
-// Nouvelle fonction : met à jour un zakat_annuel existant
-const updateExistingZakat = async (zakatAnnuelId, montantDejaPaye) => {
-  try {
-    const montantRestant = Math.max(0, (results.zakatAmount || 0) - montantDejaPaye);
-    const newStatut = montantRestant <= 0 ? "PAYE" : "NON_PAYE";
-
-    const { error } = await supabase
-      .from("zakat_annuel")
-      .update({
-        montant_total_actifs:   results.totalAssets,
-        montant_total_dettes:   results.totalDeductions,
-        montant_imposable:      results.netWorth,
-        nisab_applique:         results.nisabThreshold,
-        type_nisab_applique:    results.nisabBase?.toUpperCase() || "GOLD",
-        depasse_nisab:          results.isNisabReached,       // ✅ mis à jour
-        montant_zakat_calcule:  results.zakatAmount,          // ✅ mis à jour
-        montant_restant:        montantRestant,
-        statut:                 newStatut,
-        recalcule_auto:         false,
-        updated_at:             new Date().toISOString(),
-      })
-      .eq("id", zakatAnnuelId);
-
-    if (error) throw error;
-
-    // Sauvegarder les nouveaux actifs (soft-delete les anciens, insert les nouveaux)
-    await refreshActifsForYear(zakatAnnuelId);
-
-    success(
-      t("success"),
-      results.isNisabReached
-        ? `Zakat mise à jour : ${formatCurrency(results.zakatAmount)}`
-        : "Calcul mis à jour — Nisab non atteint, pas de Zakat due."
-    );
-    resetCalculator();
-
-  } catch (error) {
-    showError(t("error"), "Erreur mise à jour : " + error.message);
-  }
-};
-
-// Soft-delete anciens actifs et insère les nouveaux pour cette année
-const refreshActifsForYear = async (zakatAnnuelId) => {
-  // 1. Soft-delete tous les actifs de cette année
-  await supabase
-    .from("zakat_actif")
-    .update({ actif: false })
-    .eq("zakat_annuel_id", zakatAnnuelId);
-
-  // 2. Insérer les nouveaux actifs depuis formData
-  const actifs = buildActifsFromFormData(zakatAnnuelId);
-  if (actifs.length > 0) {
-    await supabase.from("zakat_actif").insert(actifs);
-  }
-};
-
-  const handleLoadHistory = async () => {
-    if (!user) {
-      showError(t("error"), "Vous devez être connecté");
-      return;
-    }
-
-    try {
-      setLoadingHistory(true);
-      setShowHistoryModal(true);
-
-      const actifsResult = await zakatService.getZakatActifsHistory(user.id);
-      if (actifsResult.success) setActifsHistory(actifsResult.data);
-
-      const zakatResult = await zakatService.getZakatAnnuelHistory(user.id);
-      if (zakatResult.success) setZakatHistory(zakatResult.data);
-    } catch (error) {
-      showError(t("error"), "Erreur lors du chargement de l'historique");
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const toggleSection = (section) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
   const resetCalculator = () => {
-    setFormData({
-      cash: "", savings: "", currentAccounts: "", fixedDeposits: "",
-      goldWeight: "", goldPurity: "24k", silverWeight: "", silverPurity: "925",
-      tradeGoodsValue: "", businessInventory: "", rentalProperties: "", vehiclesValue: "",
-      cropsWeight: "", irrigationType: "rain", cropsMarketValue: "",
-      camelsCount: "", cowsCount: "", goatsCount: "", sheepCount: "",
-      receivables: "", doubtfulReceivables: "", debts: "",
-      miningOutput: "", foundTreasure: "",
-      nisabBase: "silver", includeAllReceivables: false, includeAllProperties: true,
-    });
+    setFormData(defaultFormData);
+    setExistingZakatId(null);
     fadeAnim.setValue(0);
-    if (calculateTimeoutRef.current) clearTimeout(calculateTimeoutRef.current);
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refreshData();
-    setRefreshing(false);
+  const getStatusConfig = () => {
+    if (!results) return { gradient: th.gradientNone(), borderColor: th.border(), icon: Info, iconColor: th.textTer(), label: t("enter_data"), labelColor: th.textTer() };
+    if (results.isZakatDue)      return { gradient: th.gradientDue(),   borderColor: th.primaryColor(), icon: CheckCircle, iconColor: th.primaryColor(), label: t("zakat_due"),          labelColor: th.primaryColor() };
+    if (!results.hawlCompleted)  return { gradient: th.gradientHawl(),  borderColor: th.hawlText(),     icon: Clock,       iconColor: th.hawlText(),     label: t("hawl_not_completed"), labelColor: th.hawlText() };
+    if (!results.isNisabReached) return { gradient: th.gradientNisab(), borderColor: th.nisabText(),    icon: AlertCircle, iconColor: th.nisabText(),    label: t("nisab_not_reached"),  labelColor: th.nisabText() };
+    return { gradient: th.gradientNone(), borderColor: th.border(), icon: Info, iconColor: th.textTer(), label: t("no_zakat_due"), labelColor: th.textTer() };
   };
 
-  useEffect(() => {
-    return () => {
-      if (calculateTimeoutRef.current) clearTimeout(calculateTimeoutRef.current);
-    };
-  }, []);
+  if (prefillLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: th.bg(), justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={{ color: th.textSec(), marginTop: 14, fontSize: 14 }}>{t('loading_data')}</Text>
+      </View>
+    );
+  }
 
-  const getStatusColor = () => {
-    if (!results) return "#94a3b8";
-    if (results.isZakatDue) return MALIKI_PRIMARY;
-    if (!results.hawlCompleted) return "#f59e0b";
-    if (!results.isNisabReached) return getNisabNotReachedTextColor();
-    return "#94a3b8";
-  };
+  const statusCfg = getStatusConfig();
+  const StatusIcon = statusCfg.icon;
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: getBackgroundColor() }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <StatusBar
-        backgroundColor={getBackgroundColor()}
-        barStyle={currentTheme === "dark" ? "light-content" : "dark-content"}
-      />
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: th.bg() }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <StatusBar backgroundColor={th.bg()} barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* En-tête compact */}
-      <LinearGradient
-        colors={currentTheme === "dark" ? [MALIKI_DARK, "#0a3a0a"] : [MALIKI_LIGHT, "#e8f5e8"]}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View style={styles.titleContainer}>
-              <View style={[styles.titleIcon, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                <Crown size={20} color={MALIKI_PRIMARY} />
-              </View>
-              <View>
-                <Text style={[styles.title, { color: getTextColor() }]}>
-                  {t("maliki_zakat_calculator")}
-                </Text>
-                <Text style={[styles.subtitle, { color: MALIKI_PRIMARY }]}>
-                  {t("according_to_maliki_school")}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[styles.madhabButton, { backgroundColor: MALIKI_PRIMARY + "20" }]}
-              onPress={() => setShowMadhabInfo(true)}
-            >
-              <BookOpen size={18} color={MALIKI_PRIMARY} />
-            </TouchableOpacity>
+      {/* ── Saving overlay ── */}
+      {saving && (
+        <View style={[styles.savingOverlay, { backgroundColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)" }]}>
+          <View style={[styles.savingBox, { backgroundColor: th.card(), borderColor: th.border(), borderWidth: 1 }]}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={{ color: th.text(), marginTop: 14, fontWeight: '600', fontSize: 15 }}>{t('saving_in_progress')}</Text>
           </View>
         </View>
-      </LinearGradient>
+      )}
 
-      {/* Barre de résultats FIXE */}
+      {/* ── Fixed results bar ── */}
       <Animated.View style={[styles.fixedResultsBar, { opacity: fadeAnim }]}>
         <LinearGradient
-          colors={
-            results && results.isZakatDue ?
-              [MALIKI_PRIMARY, "#dfe6e0ff"] :
-            results && !results.hawlCompleted ?
-              ["#fef3c7", "#fde68a"] :
-            results && !results.isNisabReached ?
-              [getNisabNotReachedBackground(), "#e8f5e8"] :
-              ["#e5e7eb", "#d1d5db"]
-          }
-          style={[styles.fixedResultsContent, { borderColor: results ? getStatusColor() : "#94a3b8" }]}
+          colors={statusCfg.gradient}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={[styles.fixedResultsContent, {
+            borderColor: statusCfg.borderColor,
+            shadowColor: isDark ? "#000" : statusCfg.borderColor,
+          }]}
         >
           <View style={styles.fixedResultsHeader}>
             <View style={styles.fixedResultsStatus}>
-              {results ? (
-                <>
-                  {results.isZakatDue ? (
-                    <>
-                      <CheckCircle size={18} color={MALIKI_PRIMARY} />
-                      <Text style={[styles.fixedStatusText, { color: MALIKI_PRIMARY }]}>
-                        {t("zakat_due")}
-                      </Text>
-                    </>
-                  ) : !results.hawlCompleted ? (
-                    <>
-                      <Clock size={18} color="#f59e0b" />
-                      <Text style={[styles.fixedStatusText, { color: "#f59e0b" }]}>
-                        {t("hawl_not_completed")}
-                      </Text>
-                    </>
-                  ) : !results.isNisabReached ? (
-                    <>
-                      <AlertCircle size={18} color={getNisabNotReachedTextColor()} />
-                      <Text style={[styles.fixedStatusText, { color: getNisabNotReachedTextColor() }]}>
-                        {t("nisab_not_reached")}
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Info size={18} color="#94a3b8" />
-                      <Text style={[styles.fixedStatusText, { color: "#94a3b8" }]}>
-                        {t("no_zakat_due")}
-                      </Text>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Info size={18} color="#94a3b8" />
-                  <Text style={[styles.fixedStatusText, { color: "#94a3b8" }]}>
-                    {t("enter_data")}
-                  </Text>
-                </>
+              <View style={[styles.statusIconBubble, { backgroundColor: statusCfg.iconColor + (isDark ? "25" : "18") }]}>
+                <StatusIcon size={15} color={statusCfg.iconColor} />
+              </View>
+              <Text style={[styles.fixedStatusText, { color: statusCfg.labelColor }]}>{statusCfg.label}</Text>
+              {existingZakatId && (
+                <View style={[styles.existingBadge, { backgroundColor: isDark ? COLORS.gold + "30" : COLORS.goldPale }]}>
+                  <Text style={[styles.existingBadgeText, { color: isDark ? COLORS.goldLight : COLORS.gold }]}>{t('update_badge')}</Text>
+                </View>
               )}
             </View>
-
             <TouchableOpacity
-              style={[styles.settingsButton, { backgroundColor: MALIKI_PRIMARY + "20" }]}
+              style={[styles.settingsButton, { backgroundColor: th.primaryColor() + "20", borderColor: th.primaryColor() + "40", borderWidth: 1 }]}
               onPress={() => setShowSettingsModal(true)}
             >
-              <Sliders size={16} color={MALIKI_PRIMARY} />
+              <Sliders size={15} color={th.primaryColor()} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.fixedResultsDetails}>
+          <View style={[styles.fixedResultsDetails, { borderTopColor: statusCfg.borderColor + "40", borderTopWidth: 1, paddingTop: 10, marginTop: 4 }]}>
             <View style={styles.fixedDetailItem}>
-              <Text style={[styles.fixedDetailLabel, { color: getSecondaryTextColor() }]}>
-                {t("net_worth")}
-              </Text>
-              <Text style={[styles.fixedDetailValue, { color: getTextColor() }]}>
-                {results ? formatCurrency(results.netWorth) : "-"}
+              <Text style={[styles.fixedDetailLabel, { color: th.textSec() }]}>{t("net_worth")}</Text>
+              <Text style={[styles.fixedDetailValue, { color: th.text() }]}>{results ? formatCurrency(results.netWorth) : "—"}</Text>
+            </View>
+            <View style={[styles.fixedDetailDivider, { backgroundColor: statusCfg.borderColor + "50" }]} />
+            <View style={styles.fixedDetailItem}>
+              <Text style={[styles.fixedDetailLabel, { color: th.textSec() }]}>{t("zakat")}</Text>
+              <Text style={[styles.fixedZakatValue, { color: results?.isZakatDue ? th.primaryColor() : th.textSec() }]}>
+                {results ? formatCurrency(results.zakatAmount) : "—"}
               </Text>
             </View>
-
-            <View style={styles.fixedDetailItem}>
-              <Text style={[styles.fixedDetailLabel, { color: getSecondaryTextColor() }]}>
-                {t("zakat")}
-              </Text>
-              <Text style={[styles.fixedZakatValue, { color: results && results.isZakatDue ? MALIKI_PRIMARY : getSecondaryTextColor() }]}>
-                {results ? formatCurrency(results.zakatAmount) : "-"}
-              </Text>
-            </View>
-
             <TouchableOpacity
-              style={styles.fixedViewDetails}
+              style={[styles.fixedViewDetails, { backgroundColor: statusCfg.iconColor + "15", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }]}
               onPress={() => setShowResultsModal(true)}
               disabled={!results}
             >
-              <Text style={[styles.fixedViewDetailsText, {
-                color: results ? getSecondaryTextColor() : getSecondaryTextColor() + "80"
-              }]}>
-                {t("details")}
-              </Text>
-              <ChevronDown size={14} color={results ? getSecondaryTextColor() : getSecondaryTextColor() + "80"} />
+              <Text style={[styles.fixedViewDetailsText, { color: results ? statusCfg.iconColor : th.textTer() }]}>{t("details")}</Text>
+              <ChevronDown size={13} color={results ? statusCfg.iconColor : th.textTer()} />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -674,765 +351,435 @@ const refreshActifsForYear = async (zakatAnnuelId) => {
 
       <ScrollView
         ref={scrollViewRef}
-        style={styles.scrollView}
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[MALIKI_PRIMARY]}
-            tintColor={MALIKI_PRIMARY}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await refreshData(); setRefreshing(false); }} colors={[COLORS.primary]} tintColor={COLORS.primary} />}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingTop: 110 }}
+        contentContainerStyle={{ paddingTop: 8 }}
       >
-        {/* Onglets de navigation */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.tabsContainer}
-        >
+        {/* ── Tabs ── */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 16, marginTop: 10, marginBottom: 14 }}>
           {[
-            { id: "money", title: t("money"), icon: DollarSign },
-            { id: "metals", title: t("metals"), icon: Gem },
-            { id: "trade", title: t("trade"), icon: ShoppingCart },
+            { id: "money",       title: t("money"),       icon: DollarSign },
+            { id: "metals",      title: t("metals"),      icon: Gem },
+            { id: "trade",       title: t("trade"),       icon: ShoppingCart },
             { id: "agriculture", title: t("agriculture"), icon: Leaf },
-            { id: "livestock", title: t("livestock"), icon: Package },
-            { id: "debts", title: t("debts"), icon: CreditCard },
-            { id: "other", title: t("other"), icon: Package },
-          ].map(tab => (
-            <TouchableOpacity
-              key={tab.id}
-              style={[
-                styles.tabButton,
-                activeTab === tab.id && { backgroundColor: MALIKI_PRIMARY + "20" },
-              ]}
-              onPress={() => handleTabChange(tab.id)}
-            >
-              <tab.icon
-                size={18}
-                color={activeTab === tab.id ? MALIKI_PRIMARY : getSecondaryTextColor()}
-              />
-              <Text style={[
-                styles.tabText,
-                { color: activeTab === tab.id ? MALIKI_PRIMARY : getSecondaryTextColor() },
-              ]}>
-                {tab.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
+            { id: "livestock",   title: t("livestock"),   icon: Package },
+            { id: "debts",       title: t("debts"),       icon: CreditCard },
+            { id: "other",       title: t("other"),       icon: Package },
+          ].map(tab => {
+            const active = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[
+                  styles.tabButton,
+                  {
+                    backgroundColor: active ? COLORS.primary : th.card(),
+                    borderColor:     active ? COLORS.primary : th.border(),
+                    shadowColor:     active ? COLORS.primary : "transparent",
+                    shadowOpacity:   active ? 0.3 : 0,
+                    shadowOffset:    { width: 0, height: 3 },
+                    shadowRadius:    6,
+                    elevation:       active ? 4 : 0,
+                  }
+                ]}
+                onPress={() => { setActiveTab(tab.id); setExpandedSections(p => ({ ...p, [tab.id]: true })); }}
+              >
+                <tab.icon size={16} color={active ? "#fff" : th.textSec()} />
+                <Text style={[styles.tabText, { color: active ? "#fff" : th.textSec(), fontWeight: active ? "700" : "500" }]}>{tab.title}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
-        {/* Sections de saisie */}
-        <View style={styles.sectionsContainer}>
+        {/* ── Sections ── */}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 20 }}>
+          {/* MONEY */}
+          {activeTab === "money" && renderSection("money", t("money_and_accounts"), DollarSign, th, expandedSections, () => setExpandedSections(p => ({...p, money: !p.money})),
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+              <InputField label={t("cash_in_hand")}     value={formData.cash}            onChangeText={v => handleInputChange("cash", v)}            placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Wallet} />
+              <InputField label={t("savings_accounts")} value={formData.savings}         onChangeText={v => handleInputChange("savings", v)}         placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Banknote} />
+              <InputField label={t("current_accounts")} value={formData.currentAccounts} onChangeText={v => handleInputChange("currentAccounts", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={CreditCard} />
+              <InputField label={t("fixed_deposits")}   value={formData.fixedDeposits}   onChangeText={v => handleInputChange("fixedDeposits", v)}   placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Clock} />
+            </View>
+          )}
 
-          {/* Argent liquide et comptes */}
-          {activeTab === "money" && (
-            <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("money")}>
-                <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                    <DollarSign size={18} color={MALIKI_PRIMARY} />
+          {/* METALS */}
+          {activeTab === "metals" && renderSection("metals", t("precious_metals"), Gem, th, expandedSections, () => setExpandedSections(p => ({...p, metals: !p.metals})),
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+              <View style={[styles.pricesBanner, { backgroundColor: isDark ? "#1a2e1a" : "#f0f7ec", borderColor: isDark ? "#2a4a2a" : "#c8ddc0" }]}>
+                <View style={styles.priceItem}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 }}>
+                    <Gem size={13} color={COLORS.goldLight} />
+                    <Text style={[styles.priceLabel, { color: th.textSec() }]}>{t("gold")} 24k</Text>
                   </View>
-                  <Text style={[styles.sectionTitle, { color: getTextColor() }]}>
-                    {t("money_and_accounts")}
+                  <Text style={[styles.priceValue, { color: COLORS.goldLight }]}>{formatCurrency(defaultPrices.gold24k)}/g</Text>
+                  <Text style={[styles.priceSub, { color: th.textTer() }]}>20k: {formatCurrency(defaultPrices.gold20k)} · 18k: {formatCurrency(defaultPrices.gold18k)}</Text>
+                </View>
+                <View style={[styles.priceDivider, { backgroundColor: th.border() }]} />
+                <View style={styles.priceItem}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 }}>
+                    <Coins size={13} color={th.textSec()} />
+                    <Text style={[styles.priceLabel, { color: th.textSec() }]}>{t("silver")}</Text>
+                  </View>
+                  <Text style={[styles.priceValue, { color: th.text() }]}>{formatCurrency(defaultPrices.silver999)}/g</Text>
+                  <Text style={[styles.priceSub, { color: th.textTer() }]}>{t("spot_price")}</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
+                <View style={{ width: "48%" }}>
+                  <InputField label={t("gold_weight")} value={formData.goldWeight} onChangeText={v => handleInputChange("goldWeight", v)} placeholder="0" keyboardType="numeric" unit="g" icon={Gem} />
+                </View>
+                <View style={{ width: "48%" }}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: th.textSec(), marginBottom: 6 }}>{t("purity")}</Text>
+                  <View style={{ gap: 6 }}>
+                    {[{ key: "18k", price: defaultPrices.gold18k }, { key: "20k", price: defaultPrices.gold20k }, { key: "24k", price: defaultPrices.gold24k }].map(({ key, price }) => {
+                      const sel = formData.goldPurity === key;
+                      return (
+                        <TouchableOpacity key={key} onPress={() => handleInputChange("goldPurity", key)}
+                          style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: sel ? 1.5 : 1, borderColor: sel ? COLORS.primary : th.border(), backgroundColor: sel ? COLORS.primary : th.card2() }}>
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: sel ? "#fff" : th.text() }}>{key}</Text>
+                          <Text style={{ fontSize: 11, color: sel ? "rgba(255,255,255,0.8)" : th.textSec() }}>{formatCurrency(price)}/g</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+              {parseFloat(formData.goldWeight) > 0 && (
+                <View style={[styles.computedRow, { backgroundColor: isDark ? "#2a2200" : "#fffbea", borderColor: COLORS.gold + "50" }]}>
+                  <Text style={{ fontSize: 12, color: th.textSec() }}>
+                    {parseFloat(formData.goldWeight).toFixed(2)}g × {formatCurrency(formData.goldPurity === "24k" ? defaultPrices.gold24k : formData.goldPurity === "20k" ? defaultPrices.gold20k : defaultPrices.gold18k)}
+                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.goldLight }}>
+                    = {formatCurrency(parseFloat(formData.goldWeight) * (formData.goldPurity === "24k" ? defaultPrices.gold24k : formData.goldPurity === "20k" ? defaultPrices.gold20k : defaultPrices.gold18k))}
                   </Text>
                 </View>
-                {expandedSections.money ? <ChevronUp size={18} color={getSecondaryTextColor()} /> : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-              </TouchableOpacity>
-              {expandedSections.money && (
-                <View style={styles.sectionContent}>
-                  <InputField label={t("cash_in_hand")} value={formData.cash} onChangeText={(v) => handleInputChange("cash", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Wallet} />
-                  <InputField label={t("savings_accounts")} value={formData.savings} onChangeText={(v) => handleInputChange("savings", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Banknote} />
-                  <InputField label={t("current_accounts")} value={formData.currentAccounts} onChangeText={(v) => handleInputChange("currentAccounts", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={CreditCard} />
-                  <InputField label={t("fixed_deposits")} value={formData.fixedDeposits} onChangeText={(v) => handleInputChange("fixedDeposits", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Clock} />
+              )}
+              <InputField label={t("silver_weight")} value={formData.silverWeight} onChangeText={v => handleInputChange("silverWeight", v)} placeholder="0" keyboardType="numeric" unit="g" icon={Coins} />
+              {parseFloat(formData.silverWeight) > 0 && (
+                <View style={[styles.computedRow, { backgroundColor: th.card2(), borderColor: th.border() }]}>
+                  <Text style={{ fontSize: 12, color: th.textSec() }}>{parseFloat(formData.silverWeight).toFixed(2)}g × {formatCurrency(defaultPrices.silver999)}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: th.text() }}>= {formatCurrency(parseFloat(formData.silverWeight) * defaultPrices.silver999)}</Text>
                 </View>
               )}
             </View>
           )}
 
-          {/* Métaux précieux */}
-          {activeTab === "metals" && (
-  <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-    <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("metals")}>
-      <View style={styles.sectionHeaderLeft}>
-        <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-          <Gem size={18} color={MALIKI_PRIMARY} />
-        </View>
-        <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("precious_metals")}</Text>
-      </View>
-      {expandedSections.metals
-        ? <ChevronUp   size={18} color={getSecondaryTextColor()} />
-        : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-    </TouchableOpacity>
-
-    {expandedSections.metals && (
-      <View style={styles.sectionContent}>
-
-        {/* ── Bandeau prix live ── */}
-        <View style={[styles.pricesBanner, {
-          backgroundColor: MALIKI_PRIMARY + "10",
-          borderColor:     MALIKI_PRIMARY + "30",
-        }]}>
-          {/* OR */}
-          <View style={styles.priceItem}>
-            <View style={styles.priceHeader}>
-              <Gem size={13} color={MALIKI_SECONDARY} />
-              <Text style={[styles.priceLabel, { color: getSecondaryTextColor() }]}>
-                {t("gold")} 24k
-              </Text>
+          {/* TRADE */}
+          {activeTab === "trade" && renderSection("trade", t("trade_goods_and_properties"), ShoppingCart, th, expandedSections, () => setExpandedSections(p => ({...p, trade: !p.trade})),
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+              <InputField label={t("trade_goods_value")}  value={formData.tradeGoodsValue}   onChangeText={v => handleInputChange("tradeGoodsValue", v)}   placeholder="0" keyboardType="numeric" currency={userCurrency} icon={ShoppingCart} />
+              <InputField label={t("business_inventory")} value={formData.businessInventory} onChangeText={v => handleInputChange("businessInventory", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Warehouse} />
+              <InputField label={t("rental_properties")}  value={formData.rentalProperties}  onChangeText={v => handleInputChange("rentalProperties", v)}  placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Building} />
+              <InputField label={t("vehicles_value")}     value={formData.vehiclesValue}      onChangeText={v => handleInputChange("vehiclesValue", v)}      placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Bike} note={t("vehicles_note")} />
             </View>
-            <Text style={[styles.priceValue, { color: MALIKI_SECONDARY }]}>
-              {formatCurrency(defaultPrices.gold24k)}/g
-            </Text>
-            <Text style={[styles.priceSub, { color: getSecondaryTextColor() }]}>
-              20k: {formatCurrency(defaultPrices.gold20k)} · 18k: {formatCurrency(defaultPrices.gold18k)}
-            </Text>
-          </View>
+          )}
 
-          <View style={[styles.priceDivider, { backgroundColor: MALIKI_PRIMARY + "20" }]} />
-
-          {/* ARGENT */}
-          <View style={styles.priceItem}>
-            <View style={styles.priceHeader}>
-              <Coins size={13} color={getSecondaryTextColor()} />
-              <Text style={[styles.priceLabel, { color: getSecondaryTextColor() }]}>
-                {t("silver")}
-              </Text>
+          {/* AGRICULTURE */}
+          {activeTab === "agriculture" && renderSection("agriculture", t("agriculture"), Leaf, th, expandedSections, () => setExpandedSections(p => ({...p, agriculture: !p.agriculture})),
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+              <InputField label={t("crops_weight")} value={formData.cropsWeight} onChangeText={v => handleInputChange("cropsWeight", v)} placeholder="0" keyboardType="numeric" unit="kg" icon={Package} />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: th.textSec(), marginBottom: 8, marginTop: 4 }}>{t("irrigation_type")}</Text>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+                {[{ id: "rain", label: `${t("rain_irrigation")} (10%)`, icon: Leaf }, { id: "cost", label: `${t("cost_irrigation")} (5%)`, icon: DollarSign }].map(({ id, label, icon: Icon }) => {
+                  const sel = formData.irrigationType === id;
+                  return (
+                    <TouchableOpacity key={id} onPress={() => handleInputChange("irrigationType", id)}
+                      style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 11, borderRadius: 11, borderWidth: sel ? 1.5 : 1, borderColor: sel ? COLORS.primary : th.border(), backgroundColor: sel ? COLORS.primary : th.card2(), gap: 6 }}>
+                      <Icon size={15} color={sel ? "#fff" : th.textSec()} />
+                      <Text style={{ fontSize: 12, fontWeight: sel ? "700" : "500", color: sel ? "#fff" : th.textSec() }}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <InputField label={t("market_value")} value={formData.cropsMarketValue} onChangeText={v => handleInputChange("cropsMarketValue", v)} placeholder={t("estimated_automatically")} keyboardType="numeric" currency={userCurrency} icon={TrendingUp} />
             </View>
-            <Text style={[styles.priceValue, { color: getTextColor() }]}>
-              {formatCurrency(defaultPrices.silver999)}/g
-            </Text>
-            <Text style={[styles.priceSub, { color: getSecondaryTextColor() }]}>
-              {t("spot_price")}
-            </Text>
-          </View>
+          )}
+
+          {/* LIVESTOCK */}
+          {activeTab === "livestock" && renderSection("livestock", t("livestock"), Package, th, expandedSections, () => setExpandedSections(p => ({...p, livestock: !p.livestock})),
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+              {[
+                [{ label: t("camels"), field: "camelsCount", nisab: 5, bg: isDark ? "#2a1e00" : "#fef3c7", color: "#92400e" },
+                 { label: t("cows"),   field: "cowsCount",   nisab: 30, bg: isDark ? "#0f2a1a" : "#dcfce7", color: "#166534" }],
+                [{ label: t("goats"),  field: "goatsCount",  nisab: 40, bg: isDark ? "#2a1e00" : "#fef3c7", color: "#92400e" },
+                 { label: t("sheep"),  field: "sheepCount",  nisab: 40, bg: isDark ? "#0f2a1a" : "#dcfce7", color: "#166534" }],
+              ].map((row, ri) => (
+                <View key={ri} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
+                  {row.map(({ label, field, nisab, bg, color }) => (
+                    <View key={field} style={{ width: "48%", alignItems: "center" }}>
+                      <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: bg, alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
+                        <Package size={18} color={color} />
+                      </View>
+                      <InputField label={label} value={formData[field]} onChangeText={v => handleInputChange(field, v)} placeholder="0" keyboardType="numeric" unit={t("heads")} compact />
+                      <Text style={{ fontSize: 10, color: th.textTer(), marginTop: 3 }}>Nisab: {nisab}</Text>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* DEBTS */}
+          {activeTab === "debts" && renderSection("debts", t("receivables_and_debts"), CreditCard, th, expandedSections, () => setExpandedSections(p => ({...p, debts: !p.debts})),
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+              <InputField label={t("certain_receivables")}  value={formData.receivables}         onChangeText={v => handleInputChange("receivables", v)}         placeholder="0" keyboardType="numeric" currency={userCurrency} icon={CheckCircle} />
+              <InputField label={t("doubtful_receivables")} value={formData.doubtfulReceivables}  onChangeText={v => handleInputChange("doubtfulReceivables", v)}  placeholder="0" keyboardType="numeric" currency={userCurrency} icon={AlertCircle} />
+              <TouchableOpacity
+                onPress={() => handleInputChange("includeAllReceivables", !formData.includeAllReceivables)}
+                style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: 14, padding: 14, borderRadius: 12, backgroundColor: th.card2(), borderWidth: 1, borderColor: th.border() }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "500", color: th.text(), flex: 1 }}>{t("include_doubtful_receivables")}</Text>
+                <View style={[styles.toggleTrack, { backgroundColor: formData.includeAllReceivables ? COLORS.primary : th.border() }]}>
+                  <View style={[styles.toggleThumb, { transform: [{ translateX: formData.includeAllReceivables ? 20 : 2 }] }]} />
+                </View>
+              </TouchableOpacity>
+              <InputField label={t("debts_to_pay")} value={formData.debts} onChangeText={v => handleInputChange("debts", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={CreditCard} />
+            </View>
+          )}
+
+          {/* OTHER */}
+          {activeTab === "other" && renderSection("other", t("other_assets"), Diamond, th, expandedSections, () => setExpandedSections(p => ({...p, other: !p.other})),
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+              <InputField label={t("mining_output")}  value={formData.miningOutput}  onChangeText={v => handleInputChange("miningOutput", v)}  placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Diamond} note={t("mining_note")} />
+              <InputField label={t("found_treasure")} value={formData.foundTreasure} onChangeText={v => handleInputChange("foundTreasure", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Gem}     note={t("treasure_note")} />
+            </View>
+          )}
         </View>
 
-        {/* ── OR : poids + sélecteur pureté ── */}
-        <View style={styles.row}>
-          <View style={styles.halfInput}>
-            <InputField
-              label={t("gold_weight")}
-              value={formData.goldWeight}
-              onChangeText={(v) => handleInputChange("goldWeight", v)}
-              placeholder="0"
-              keyboardType="numeric"
-              unit="g"
-              icon={Gem}
+        {/* ── Actions ── */}
+        <View style={{ borderTopWidth: 1, borderTopColor: th.border(), paddingHorizontal: 16, paddingVertical: 10, paddingBottom: Platform.OS === "ios" ? 26 : 16, backgroundColor: th.bg() }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Button
+              title={existingZakatId ? t("update") : t("save")}
+              onPress={handleSaveCalculation}
+              size="medium"
+              style={{ flex: 1, minHeight: 50 }}
+              backgroundColor={COLORS.goldLight}
+              textColor="#fff"
+              icon={CheckCircle}
+              disabled={saving || !results || results.netWorth === 0}
+            />
+            <Button
+              title={t("reset")}
+              onPress={resetCalculator}
+              variant="outline"
+              size="medium"
+              style={{ flex: 1, minHeight: 50 }}
+              textColor={COLORS.primary}
+              borderColor={COLORS.primary}
+              icon={Calculator}
+              disabled={saving}
             />
           </View>
-<View style={styles.halfInput}>
-  <Text style={[styles.pickerLabel, { color: getSecondaryTextColor() }]}>
-    {t("purity")}
-  </Text>
-  <View style={styles.purityButtonsColumn}>
-    {[
-      { key: "18k", price: defaultPrices.gold18k },
-      { key: "20k", price: defaultPrices.gold20k },
-      { key: "24k", price: defaultPrices.gold24k },
-    ].map(({ key, price }) => (
-      <TouchableOpacity
-        key={key}
-        style={[
-          styles.purityButtonRow,
-          formData.goldPurity === key && { backgroundColor: MALIKI_PRIMARY },
-          { borderColor: formData.goldPurity === key ? MALIKI_PRIMARY : getBorderColor() },
-        ]}
-        onPress={() => handleInputChange("goldPurity", key)}
-      >
-        <Text style={[
-          styles.purityTextRow,
-          { color: formData.goldPurity === key ? "#ffffff" : getTextColor() },
-        ]}>
-          {key}
-        </Text>
-        <Text style={[
-          styles.purityPriceRow,
-          { color: formData.goldPurity === key ? "#ffffffCC" : getSecondaryTextColor() },
-        ]}>
-          {formatCurrency(price)}/g
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-</View>
         </View>
 
-        {/* Valeur calculée OR */}
-        {parseFloat(formData.goldWeight) > 0 && (
-          <View style={[styles.computedValue, { backgroundColor: MALIKI_SECONDARY + "15" }]}>
-            <Text style={[styles.computedLabel, { color: getSecondaryTextColor() }]}>
-              {parseFloat(formData.goldWeight).toFixed(2)}g ×{" "}
-              {formatCurrency(
-                formData.goldPurity === "24k" ? defaultPrices.gold24k :
-                formData.goldPurity === "20k" ? defaultPrices.gold20k :
-                defaultPrices.gold18k
-              )}
-            </Text>
-            <Text style={[styles.computedTotal, { color: MALIKI_SECONDARY }]}>
-              = {formatCurrency(
-                parseFloat(formData.goldWeight) * (
-                  formData.goldPurity === "24k" ? defaultPrices.gold24k :
-                  formData.goldPurity === "20k" ? defaultPrices.gold20k :
-                  defaultPrices.gold18k
-                )
-              )}
-            </Text>
-          </View>
-        )}
-
-        {/* ── ARGENT : poids uniquement, sans sélecteur pureté ── */}
-        <InputField
-          label={t("silver_weight")}
-          value={formData.silverWeight}
-          onChangeText={(v) => handleInputChange("silverWeight", v)}
-          placeholder="0"
-          keyboardType="numeric"
-          unit="g"
-          icon={Coins}
-        />
-
-        {/* Valeur calculée ARGENT */}
-        {parseFloat(formData.silverWeight) > 0 && (
-          <View style={[styles.computedValue, { backgroundColor: getSecondaryTextColor() + "15" }]}>
-            <Text style={[styles.computedLabel, { color: getSecondaryTextColor() }]}>
-              {parseFloat(formData.silverWeight).toFixed(2)}g ×{" "}
-              {formatCurrency(defaultPrices.silver999)}
-            </Text>
-            <Text style={[styles.computedTotal, { color: getTextColor() }]}>
-              = {formatCurrency(parseFloat(formData.silverWeight) * defaultPrices.silver999)}
-            </Text>
-          </View>
-        )}
-
-      </View>
-    )}
-  </View>
-)}
-
-          {/* Biens commerciaux */}
-          {activeTab === "trade" && (
-            <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("trade")}>
-                <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                    <ShoppingCart size={18} color={MALIKI_PRIMARY} />
-                  </View>
-                  <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("trade_goods_and_properties")}</Text>
-                </View>
-                {expandedSections.trade ? <ChevronUp size={18} color={getSecondaryTextColor()} /> : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-              </TouchableOpacity>
-              {expandedSections.trade && (
-                <View style={styles.sectionContent}>
-                  <InputField label={t("trade_goods_value")} value={formData.tradeGoodsValue} onChangeText={(v) => handleInputChange("tradeGoodsValue", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={ShoppingCart} />
-                  <InputField label={t("business_inventory")} value={formData.businessInventory} onChangeText={(v) => handleInputChange("businessInventory", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Warehouse} />
-                  <InputField label={t("rental_properties")} value={formData.rentalProperties} onChangeText={(v) => handleInputChange("rentalProperties", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Building} />
-                  <InputField label={t("vehicles_value")} value={formData.vehiclesValue} onChangeText={(v) => handleInputChange("vehiclesValue", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Bike} note={t("vehicles_note")} />
-                  <View style={styles.toggleContainer}>
-                    <Text style={[styles.toggleLabel, { color: getTextColor() }]}>{t("include_all_properties")}</Text>
-                    <TouchableOpacity style={[styles.toggleButton, formData.includeAllProperties && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("includeAllProperties", !formData.includeAllProperties)}>
-                      <View style={[styles.toggleCircle, formData.includeAllProperties && { transform: [{ translateX: 20 }] }]} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Agriculture */}
-          {activeTab === "agriculture" && (
-            <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("agriculture")}>
-                <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                    <Leaf size={18} color={MALIKI_PRIMARY} />
-                  </View>
-                  <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("agriculture")}</Text>
-                </View>
-                {expandedSections.agriculture ? <ChevronUp size={18} color={getSecondaryTextColor()} /> : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-              </TouchableOpacity>
-              {expandedSections.agriculture && (
-                <View style={styles.sectionContent}>
-                  <InputField label={t("crops_weight")} value={formData.cropsWeight} onChangeText={(v) => handleInputChange("cropsWeight", v)} placeholder="0" keyboardType="numeric" unit="kg" icon={Package} />
-                  <View style={styles.pickerContainer}>
-                    <Text style={[styles.pickerLabel, { color: getSecondaryTextColor() }]}>{t("irrigation_type")}</Text>
-                    <View style={styles.pickerButtons}>
-                      <TouchableOpacity style={[styles.irrigationButton, formData.irrigationType === "rain" && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("irrigationType", "rain")}>
-                        <Leaf size={16} color={formData.irrigationType === "rain" ? "#ffffff" : getSecondaryTextColor()} />
-                        <Text style={[styles.irrigationText, formData.irrigationType === "rain" && { color: "#ffffff" }, { color: getSecondaryTextColor() }]}>{t("rain_irrigation")} (10%)</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.irrigationButton, formData.irrigationType === "cost" && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("irrigationType", "cost")}>
-                        <DollarSign size={16} color={formData.irrigationType === "cost" ? "#ffffff" : getSecondaryTextColor()} />
-                        <Text style={[styles.irrigationText, formData.irrigationType === "cost" && { color: "#ffffff" }, { color: getSecondaryTextColor() }]}>{t("cost_irrigation")} (5%)</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <InputField label={t("market_value")} value={formData.cropsMarketValue} onChangeText={(v) => handleInputChange("cropsMarketValue", v)} placeholder={t("estimated_automatically")} keyboardType="numeric" currency={userCurrency} icon={TrendingUp} />
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Bétail */}
-          {activeTab === "livestock" && (
-            <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("livestock")}>
-                <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                    <Package size={18} color={MALIKI_PRIMARY} />
-                  </View>
-                  <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("livestock")}</Text>
-                </View>
-                {expandedSections.livestock ? <ChevronUp size={18} color={getSecondaryTextColor()} /> : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-              </TouchableOpacity>
-              {expandedSections.livestock && (
-                <View style={styles.sectionContent}>
-                  <View style={styles.livestockGrid}>
-                    <View style={styles.livestockItem}>
-                      <View style={[styles.livestockIcon, { backgroundColor: "#fef3c7" }]}><Package size={20} color="#92400e" /></View>
-                      <InputField label={t("camels")} value={formData.camelsCount} onChangeText={(v) => handleInputChange("camelsCount", v)} placeholder="0" keyboardType="numeric" unit={t("heads")} compact />
-                      <Text style={[styles.livestockNote, { color: getSecondaryTextColor() }]}>{t("nisab")}: 5</Text>
-                    </View>
-                    <View style={styles.livestockItem}>
-                      <View style={[styles.livestockIcon, { backgroundColor: "#dcfce7" }]}><Package size={20} color="#166534" /></View>
-                      <InputField label={t("cows")} value={formData.cowsCount} onChangeText={(v) => handleInputChange("cowsCount", v)} placeholder="0" keyboardType="numeric" unit={t("heads")} compact />
-                      <Text style={[styles.livestockNote, { color: getSecondaryTextColor() }]}>{t("nisab")}: 30</Text>
-                    </View>
-                  </View>
-                  <View style={styles.livestockGrid}>
-                    <View style={styles.livestockItem}>
-                      <View style={[styles.livestockIcon, { backgroundColor: "#fef3c7" }]}><Package size={20} color="#92400e" /></View>
-                      <InputField label={t("goats")} value={formData.goatsCount} onChangeText={(v) => handleInputChange("goatsCount", v)} placeholder="0" keyboardType="numeric" unit={t("heads")} compact />
-                      <Text style={[styles.livestockNote, { color: getSecondaryTextColor() }]}>{t("nisab")}: 40</Text>
-                    </View>
-                    <View style={styles.livestockItem}>
-                      <View style={[styles.livestockIcon, { backgroundColor: "#dcfce7" }]}><Package size={20} color="#166534" /></View>
-                      <InputField label={t("sheep")} value={formData.sheepCount} onChangeText={(v) => handleInputChange("sheepCount", v)} placeholder="0" keyboardType="numeric" unit={t("heads")} compact />
-                      <Text style={[styles.livestockNote, { color: getSecondaryTextColor() }]}>{t("nisab")}: 40</Text>
-                    </View>
-                  </View>
-                  <View style={styles.livestockInfo}>
-                    <Info size={16} color={getSecondaryTextColor()} />
-                    <Text style={[styles.livestockInfoText, { color: getSecondaryTextColor() }]}>{t("livestock_calculation_note")}</Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Créances et dettes */}
-          {activeTab === "debts" && (
-            <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("debts")}>
-                <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                    <CreditCard size={18} color={MALIKI_PRIMARY} />
-                  </View>
-                  <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("receivables_and_debts")}</Text>
-                </View>
-                {expandedSections.debts ? <ChevronUp size={18} color={getSecondaryTextColor()} /> : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-              </TouchableOpacity>
-              {expandedSections.debts && (
-                <View style={styles.sectionContent}>
-                  <InputField label={t("certain_receivables")} value={formData.receivables} onChangeText={(v) => handleInputChange("receivables", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={CheckCircle} />
-                  <InputField label={t("doubtful_receivables")} value={formData.doubtfulReceivables} onChangeText={(v) => handleInputChange("doubtfulReceivables", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={AlertCircle} />
-                  <View style={styles.toggleContainer}>
-                    <Text style={[styles.toggleLabel, { color: getTextColor() }]}>{t("include_doubtful_receivables")}</Text>
-                    <TouchableOpacity style={[styles.toggleButton, formData.includeAllReceivables && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("includeAllReceivables", !formData.includeAllReceivables)}>
-                      <View style={[styles.toggleCircle, formData.includeAllReceivables && { transform: [{ translateX: 20 }] }]} />
-                    </TouchableOpacity>
-                  </View>
-                  <InputField label={t("debts_to_pay")} value={formData.debts} onChangeText={(v) => handleInputChange("debts", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={CreditCard} />
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Autres actifs */}
-          {activeTab === "other" && (
-            <View style={[styles.section, { backgroundColor: getCardColor(), borderColor: getBorderColor() }]}>
-              <TouchableOpacity style={styles.sectionHeader} onPress={() => toggleSection("other")}>
-                <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                    <Package size={18} color={MALIKI_PRIMARY} />
-                  </View>
-                  <Text style={[styles.sectionTitle, { color: getTextColor() }]}>{t("other_assets")}</Text>
-                </View>
-                {expandedSections.other ? <ChevronUp size={18} color={getSecondaryTextColor()} /> : <ChevronDown size={18} color={getSecondaryTextColor()} />}
-              </TouchableOpacity>
-              {expandedSections.other && (
-                <View style={styles.sectionContent}>
-                  <InputField label={t("mining_output")} value={formData.miningOutput} onChangeText={(v) => handleInputChange("miningOutput", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Diamond} note={t("mining_note")} />
-                  <InputField label={t("found_treasure")} value={formData.foundTreasure} onChangeText={(v) => handleInputChange("foundTreasure", v)} placeholder="0" keyboardType="numeric" currency={userCurrency} icon={Gem} note={t("treasure_note")} />
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Actions */}
-        <View style={[styles.actionsContainer, { backgroundColor: getBackgroundColor(), borderTopColor: getBorderColor() }]}>
-          <View style={styles.actions}>
-            <Button title={t("history")} onPress={handleLoadHistory} variant="outline" size="medium" style={styles.historyButton} textColor={MALIKI_ACCENT} borderColor={MALIKI_ACCENT} icon={Clock} />
-            <Button title={t("save")} onPress={handleSaveCalculation} size="medium" style={styles.saveButton} backgroundColor={MALIKI_SECONDARY} textColor="#ffffff" icon={CheckCircle} disabled={!results || results.netWorth === 0} />
-            <Button title={t("reset")} onPress={resetCalculator} variant="outline" size="medium" style={styles.resetButton} textColor={MALIKI_PRIMARY} borderColor={MALIKI_PRIMARY} icon={Calculator} />
-          </View>
-        </View>
-
-        {/* Principes Maliki */}
-        <View style={styles.principlesSection}>
-          <Text style={[styles.principlesTitle, { color: getTextColor(), textAlign: 'center', marginBottom: 16 }]}>
-            {t("maliki_principles")}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.principlesScrollContainer}>
+        {/* ── Maliki principles ── */}
+        <View style={{ marginHorizontal: 16, marginBottom: 24 }}>
+          <Text style={{ fontSize: 17, fontWeight: "700", color: th.text(), textAlign: "center", marginBottom: 16 }}>{t("maliki_principles")}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, paddingVertical: 4 }}>
             {[
-              { title: t("maliki_nisab"), description: t("maliki_nisab_desc"), icon: Scale, color: MALIKI_PRIMARY },
-              { title: t("maliki_receivables"), description: t("maliki_receivables_desc"), icon: CreditCard, color: MALIKI_SECONDARY },
-              { title: t("maliki_trade_goods"), description: t("maliki_trade_goods_desc"), icon: ShoppingCart, color: MALIKI_ACCENT },
-              { title: t("maliki_agriculture"), description: t("maliki_agriculture_desc"), icon: Leaf, color: "#2e7d32" },
-              { title: t("maliki_livestock"), description: t("maliki_livestock_desc"), icon: Package, color: "#795548" },
-            ].map((principle, index) => (
-              <View key={index} style={[styles.principleCard, { backgroundColor: getCardColor() }]}>
-                <View style={[styles.principleIcon, { backgroundColor: principle.color + "20" }]}>
-                  <principle.icon size={24} color={principle.color} />
+              { title: t("maliki_nisab"),       desc: t("maliki_nisab_desc"),       icon: Scale,        color: COLORS.primary },
+              { title: t("maliki_receivables"), desc: t("maliki_receivables_desc"), icon: CreditCard,   color: COLORS.goldLight },
+              { title: t("maliki_trade_goods"), desc: t("maliki_trade_goods_desc"), icon: ShoppingCart, color: COLORS.accent },
+              { title: t("maliki_agriculture"), desc: t("maliki_agriculture_desc"), icon: Leaf,         color: "#2e7d32" },
+              { title: t("maliki_livestock"),   desc: t("maliki_livestock_desc"),   icon: Package,      color: "#795548" },
+            ].map((p, i) => (
+              <View key={i} style={[styles.principleCard, { backgroundColor: th.card(), borderColor: th.border(), shadowColor: isDark ? "#000" : p.color }]}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: p.color + "20", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                  <p.icon size={22} color={p.color} />
                 </View>
-                <Text style={[styles.principleTitle, { color: getTextColor() }]}>{principle.title}</Text>
-                <Text style={[styles.principleDesc, { color: getSecondaryTextColor() }]}>{principle.description}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: th.text(), marginBottom: 6 }}>{p.title}</Text>
+                <Text style={{ fontSize: 11, lineHeight: 16, color: th.textSec() }}>{p.desc}</Text>
               </View>
             ))}
           </ScrollView>
         </View>
-
-        <View style={styles.bottomSpacer} />
+        <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* Modal Historique */}
-      <Modal visible={showHistoryModal} animationType="slide" transparent={true} onRequestClose={() => setShowHistoryModal(false)}>
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: getCardColor() }]}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderLeft}>
-                <View style={[styles.modalIcon, { backgroundColor: MALIKI_ACCENT + "20" }]}>
-                  <Clock size={24} color={MALIKI_ACCENT} />
-                </View>
-                <View>
-                  <Text style={[styles.modalTitle, { color: getTextColor() }]}>{t("history")}</Text>
-                  <Text style={[styles.modalSubtitle, { color: MALIKI_ACCENT }]}>{t("your_zakat_history")}</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setShowHistoryModal(false)} style={styles.closeButton}>
-                <Text style={{ color: getSecondaryTextColor(), fontSize: 20 }}>×</Text>
-              </TouchableOpacity>
+      {/* ── Confirm Update Modal ── */}
+      <Modal visible={showConfirmUpdateModal} animationType="fade" transparent onRequestClose={() => setShowConfirmUpdateModal(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.55)" }]}>
+          <View style={[styles.confirmBox, { backgroundColor: th.card(), borderColor: th.border(), borderWidth: 1 }]}>
+            <View style={[styles.confirmIconBubble, { backgroundColor: COLORS.goldLight + "25" }]}>
+              <AlertCircle size={30} color={COLORS.goldLight} />
             </View>
-
-            {loadingHistory ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={MALIKI_PRIMARY} />
-                <Text style={[styles.loadingText, { color: getSecondaryTextColor() }]}>{t("loading")}...</Text>
+            <Text style={[styles.confirmTitle, { color: th.text() }]}>{t('existing_calculation')}</Text>
+            <Text style={{ fontSize: 14, color: th.textSec(), textAlign: "center", lineHeight: 20, marginBottom: 16 }}>
+              {t('existing_calculation_year')}{existingZakatInfo?.annee_hijri ? ` ${existingZakatInfo.annee_hijri} ${t('hijri_year_letter')}` : ''}.
+            </Text>
+            {existingZakatInfo && (
+              <View style={[styles.confirmInfoCard, { backgroundColor: th.bg(), borderColor: th.border() }]}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: th.textTer(), marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('current_calculation')}</Text>
+                {[
+                  { label: t('zakat_calculated'), value: formatCurrency(existingZakatInfo.montant_zakat_calcule || 0), color: th.primaryColor() },
+                  { label: t('status'), value: existingZakatInfo.statut === 'PAYE' ? `${t('paid')} ✓` : t('unpaid'), color: th.text() },
+                  { label: t('new_calculation'), value: formatCurrency(results?.zakatAmount || 0), color: results?.isZakatDue ? th.primaryColor() : th.textSec() },
+                ].map((row, i) => (
+                  <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, borderBottomWidth: i < 2 ? 1 : 0, borderBottomColor: th.border() }}>
+                    <Text style={{ fontSize: 13, color: th.textSec() }}>{row.label}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: row.color }}>{row.value}</Text>
+                  </View>
+                ))}
               </View>
-            ) : (
-              <ScrollView style={styles.modalScroll}>
-                <View style={styles.historySection}>
-                  <Text style={[styles.historySectionTitle, { color: getTextColor() }]}>{t("annual_calculations")}</Text>
-                  {zakatHistory.length === 0 ? (
-                    <Text style={[styles.emptyText, { color: getSecondaryTextColor() }]}>{t("no_annual_calculations")}</Text>
-                  ) : (
-                    zakatHistory.map((item, index) => (
-                      <View key={index} style={[styles.historyCard, { backgroundColor: getBackgroundColor() }]}>
-                        <View style={styles.historyCardHeader}>
-                          <Text style={[styles.historyYear, { color: MALIKI_PRIMARY }]}>{t("year")} {item.annee_hijri}H</Text>
-                          <View style={[styles.statusBadge, item.statut === 'PAYE' ? styles.statusPaid : item.statut === 'NON_PAYE' ? styles.statusUnpaid : styles.statusExempt]}>
-                            <Text style={styles.statusText}>{item.statut}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.historyCardDetails}>
-                          <View style={styles.historyDetailRow}>
-                            <Text style={[styles.historyLabel, { color: getSecondaryTextColor() }]}>{t("net_worth")}:</Text>
-                            <Text style={[styles.historyValue, { color: getTextColor() }]}>{formatCurrency(item.montant_imposable)}</Text>
-                          </View>
-                          <View style={styles.historyDetailRow}>
-                            <Text style={[styles.historyLabel, { color: getSecondaryTextColor() }]}>{t("zakat_calculated")}:</Text>
-                            <Text style={[styles.historyValue, { color: MALIKI_PRIMARY }]}>{formatCurrency(item.montant_zakat_calcule)}</Text>
-                          </View>
-                          {item.montant_zakat_paye > 0 && (
-                            <View style={styles.historyDetailRow}>
-                              <Text style={[styles.historyLabel, { color: getSecondaryTextColor() }]}>{t("paid")}:</Text>
-                              <Text style={[styles.historyValue, { color: "#10b981" }]}>{formatCurrency(item.montant_zakat_paye)}</Text>
-                            </View>
-                          )}
-                          {item.montant_restant > 0 && (
-                            <View style={styles.historyDetailRow}>
-                              <Text style={[styles.historyLabel, { color: getSecondaryTextColor() }]}>{t("remaining")}:</Text>
-                              <Text style={[styles.historyValue, { color: "#ef4444" }]}>{formatCurrency(item.montant_restant)}</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={[styles.historyDate, { color: getSecondaryTextColor() }]}>{new Date(item.created_at).toLocaleDateString()}</Text>
-                      </View>
-                    ))
-                  )}
-                </View>
-
-                <View style={styles.historySection}>
-                  <Text style={[styles.historySectionTitle, { color: getTextColor() }]}>{t("assets_history")}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.historyFilterTabs}>
-                    {["all", "money", "metals", "trade", "agriculture", "livestock", "debts", "other"].map(tab => (
-                      <TouchableOpacity key={tab} style={[styles.historyTabButton, historyFilterTab === tab && { backgroundColor: MALIKI_PRIMARY + "20" }]} onPress={() => setHistoryFilterTab(tab)}>
-                        <Text style={[styles.historyTabText, { color: historyFilterTab === tab ? MALIKI_PRIMARY : getSecondaryTextColor() }]}>{t(tab) || tab}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  {actifsHistory.length === 0 ? (
-                    <Text style={[styles.emptyText, { color: getSecondaryTextColor() }]}>{t("no_assets_recorded")}</Text>
-                  ) : (
-                    actifsHistory.filter(item => {
-                      if (historyFilterTab === "all") return true;
-                      const typeName = (item.type_zakat?.nom_type || "").toLowerCase();
-                      switch(historyFilterTab) {
-                        case "money": return typeName.includes("argent") || typeName.includes("cash") || typeName.includes("epargne");
-                        case "metals": return typeName.includes("or") || typeName.includes("argent_metal");
-                        case "trade": return typeName.includes("commerce");
-                        case "agriculture": return typeName.includes("agriculture");
-                        case "livestock": return typeName.includes("betail");
-                        case "debts": return typeName.includes("creance");
-                        default: return true;
-                      }
-                    }).slice(0, 20).map((item, index) => (
-                      <View key={index} style={[styles.assetCard, { backgroundColor: getBackgroundColor() }]}>
-                        <View style={styles.assetHeader}>
-                          <Text style={[styles.assetName, { color: getTextColor() }]}>{item.nom_actif}</Text>
-                          <View style={[styles.assetTypeBadge, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                            <Text style={[styles.assetType, { color: MALIKI_PRIMARY }]}>{item.type_zakat?.nom_type}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.assetDetails}>
-                          <Text style={[styles.assetQuantity, { color: getSecondaryTextColor() }]}>{item.quantite} {item.type_zakat?.unite_mesure || ''}</Text>
-                          <Text style={[styles.assetValue, { color: getTextColor() }]}>{formatCurrency(item.valeur_totale)}</Text>
-                        </View>
-                        <Text style={[styles.assetDate, { color: getSecondaryTextColor() }]}>
-                          {new Date(item.created_at).toLocaleDateString()} à {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </View>
-                    ))
-                  )}
-                </View>
-              </ScrollView>
             )}
-
-            <View style={styles.modalActions}>
-              <Button title={t("close")} onPress={() => setShowHistoryModal(false)} backgroundColor={MALIKI_PRIMARY} textColor="#ffffff" style={styles.applyButton} />
+            <Text style={{ fontSize: 12, color: th.textTer(), textAlign: "center", lineHeight: 17, marginBottom: 20, fontStyle: "italic" }}>
+              {t('payments_preserved')}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity onPress={() => { setShowConfirmUpdateModal(false); setExistingZakatInfo(null); }}
+                style={[styles.confirmBtnCancel, { borderColor: th.border() }]}>
+                <Text style={{ color: th.textSec(), fontWeight: "600", fontSize: 14 }}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={async () => { setShowConfirmUpdateModal(false); setExistingZakatInfo(null); await _doSave(); }}
+                style={[styles.confirmBtnUpdate, { backgroundColor: COLORS.primary }]}>
+                <CheckCircle size={15} color="#fff" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>{t('do_update')}</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Modal Paramètres */}
-      <Modal visible={showSettingsModal} animationType="slide" transparent={true} onRequestClose={() => setShowSettingsModal(false)}>
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: getCardColor() }]}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderLeft}>
-                <View style={[styles.modalIcon, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                  <Settings size={24} color={MALIKI_PRIMARY} />
-                </View>
-                <View>
-                  <Text style={[styles.modalTitle, { color: getTextColor() }]}>{t("maliki_settings")}</Text>
-                  <Text style={[styles.modalSubtitle, { color: MALIKI_PRIMARY }]}>{t("settings")}</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setShowSettingsModal(false)} style={styles.closeButton}>
-                <Text style={{ color: getSecondaryTextColor(), fontSize: 20 }}>×</Text>
+      {/* ── Results Modal ── */}
+      <Modal visible={showResultsModal} animationType="slide" transparent onRequestClose={() => setShowResultsModal(false)}>
+        <View style={[styles.sheetOverlay, { backgroundColor: isDark ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.5)" }]}>
+          <View style={[styles.sheet, { backgroundColor: th.card() }]}>
+            <View style={[styles.sheetHeader, { borderBottomColor: th.border() }]}>
+              <Text style={[styles.sheetTitle, { color: th.text() }]}>{t("zakat_calculation_details")}</Text>
+              <TouchableOpacity onPress={() => setShowResultsModal(false)} style={[styles.closeBtn, { backgroundColor: th.bg2() }]}>
+                <Text style={{ color: th.textSec(), fontSize: 18, lineHeight: 20 }}>×</Text>
               </TouchableOpacity>
             </View>
-
-            <ScrollView style={styles.modalScroll}>
-              {/* Localisation */}
-              <View style={styles.settingSection}>
-                <Text style={[styles.settingSectionTitle, { color: getTextColor() }]}>{t("location")} & {t("currency")}</Text>
-                <View style={[styles.locationCard, { backgroundColor: MALIKI_PRIMARY + "10", borderColor: MALIKI_PRIMARY, borderWidth: 1.5 }]}>
-                  <View style={styles.locationHeader}>
-                    <MapPin size={20} color={MALIKI_PRIMARY} />
-                    <Text style={[styles.locationTitle, { color: getTextColor() }]}>{t("your_location")}</Text>
+            <ScrollView style={{ paddingHorizontal: 20, paddingTop: 18 }}>
+              {results && (
+                <>
+                  <View style={[styles.resultsGrid, { borderColor: th.border() }]}>
+                    {[
+                      { label: t("total_assets"),     value: results.totalAssets,     color: th.text() },
+                      { label: t("total_deductions"), value: results.totalDeductions, color: COLORS.danger },
+                      { label: t("net_worth"),        value: results.netWorth,        color: th.text(), bold: true },
+                      { label: t("nisab_threshold"),  value: results.nisabThreshold,  color: th.textSec() },
+                    ].map((row, i) => (
+                      <View key={i} style={[styles.resultsRow, { borderBottomColor: th.border() }]}>
+                        <Text style={{ fontSize: 14, color: th.textSec() }}>{row.label}</Text>
+                        <Text style={{ fontSize: 15, fontWeight: row.bold ? "800" : "600", color: row.color }}>{formatCurrency(row.value)}</Text>
+                      </View>
+                    ))}
                   </View>
-                  <View style={styles.locationDetails}>
-                    <View style={styles.locationItem}>
-                      <Text style={[styles.locationLabel, { color: getSecondaryTextColor() }]}>{t("country")}:</Text>
-                      <Text style={[styles.locationValue, { color: getTextColor() }]}>{userCountry?.name || t("detecting")}</Text>
-                    </View>
-                    <View style={styles.locationItem}>
-                      <Text style={[styles.locationLabel, { color: getSecondaryTextColor() }]}>{t("city")}:</Text>
-                      <Text style={[styles.locationValue, { color: getTextColor() }]}>{userCountry?.city || t("detecting")}</Text>
-                    </View>
-                    <View style={styles.locationItem}>
-                      <Text style={[styles.locationLabel, { color: getSecondaryTextColor() }]}>{t("currency")}:</Text>
-                      <Text style={[styles.currencyValue, { color: MALIKI_PRIMARY }]}>{userCurrency}</Text>
-                    </View>
+
+                  <View style={[styles.statusBanner, {
+                    backgroundColor: results.isZakatDue ? th.primaryColor() + "15" : results.hawlCompleted ? th.nisabBg() : th.hawlBg(),
+                    borderLeftColor: results.isZakatDue ? th.primaryColor() : !results.hawlCompleted ? th.hawlText() : th.nisabText(),
+                  }]}>
+                    {results.isZakatDue && (
+                      <>
+                        <Text style={{ fontSize: 13, color: th.textSec(), marginBottom: 4 }}>{t("zakat_amount")}</Text>
+                        <Text style={{ fontSize: 28, fontWeight: "800", color: th.primaryColor() }}>{formatCurrency(results.zakatAmount)}</Text>
+                      </>
+                    )}
+                    {!results.isZakatDue && (
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: !results.hawlCompleted ? th.hawlText() : th.nisabText() }}>
+                        {!results.hawlCompleted ? t("hawl_not_completed") : !results.isNisabReached ? t("nisab_not_reached") : t("no_zakat_due")}
+                      </Text>
+                    )}
+                  </View>
+                </>
+              )}
+              <View style={{ height: 30 }} />
+            </ScrollView>
+            <View style={[styles.sheetFooter, { borderTopColor: th.border() }]}>
+              <Button title={t("close")} onPress={() => setShowResultsModal(false)} variant="outline" textColor={COLORS.primary} borderColor={COLORS.primary} style={{ flex: 1 }} />
+              <Button title={saving ? "..." : t("save_calculation")} onPress={() => { setShowResultsModal(false); handleSaveCalculation(); }} backgroundColor={COLORS.primary} textColor="#fff" disabled={saving} style={{ flex: 2 }} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Settings Modal ── */}
+      <Modal visible={showSettingsModal} animationType="slide" transparent onRequestClose={() => setShowSettingsModal(false)}>
+        <View style={[styles.sheetOverlay, { backgroundColor: isDark ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.5)" }]}>
+          <View style={[styles.sheet, { backgroundColor: th.card() }]}>
+            <View style={[styles.sheetHeader, { borderBottomColor: th.border() }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.primary + "20", alignItems: "center", justifyContent: "center" }}>
+                  <Settings size={22} color={COLORS.primary} />
+                </View>
+                <View>
+                  <Text style={[styles.sheetTitle, { color: th.text() }]}>{t("maliki_settings")}</Text>
+                  <Text style={{ fontSize: 12, color: COLORS.primary, marginTop: 1 }}>{t('maliki_subtitle')}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowSettingsModal(false)} style={[styles.closeBtn, { backgroundColor: th.bg2() }]}>
+                <Text style={{ color: th.textSec(), fontSize: 18, lineHeight: 20 }}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: th.text(), marginBottom: 12 }}>{t("location")} & {t("currency")}</Text>
+              <View style={[styles.settingCard, { backgroundColor: COLORS.primary + (isDark ? "18" : "0e"), borderColor: COLORS.primary + "40" }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <MapPin size={18} color={COLORS.primary} />
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: th.text() }}>{t("your_location")}</Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: th.border() }}>
+                  <Text style={{ fontSize: 13, color: th.textSec() }}>{t("country")}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: th.text() }}>{userCountry?.name || t("detecting")}</Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8 }}>
+                  <Text style={{ fontSize: 13, color: th.textSec() }}>{t("currency")}</Text>
+                  <View style={{ backgroundColor: COLORS.primary + "20", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: th.primaryColor() }}>{userCurrency}</Text>
                   </View>
                 </View>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: getBorderColor() }]} />
+              <View style={{ height: 1, backgroundColor: th.border(), marginVertical: 20 }} />
 
-              {/* Nisab */}
-              <View style={styles.settingSection}>
-                <Text style={[styles.settingSectionTitle, { color: getTextColor() }]}>{t("nisab_base")}</Text>
-                <View style={styles.settingButtons}>
-                  <TouchableOpacity style={[styles.settingButton, formData.nisabBase === "silver" && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("nisabBase", "silver")}>
-                    <Coins size={20} color={formData.nisabBase === "silver" ? "#ffffff" : MALIKI_PRIMARY} />
-                    <Text style={[styles.settingButtonText, formData.nisabBase === "silver" && { color: "#ffffff" }, { color: getTextColor() }]}>{t("silver")}</Text>
-                    <Text style={[styles.settingButtonSubtext, formData.nisabBase === "silver" && { color: "#ffffffCC" }, { color: getSecondaryTextColor() }]}>{formatCurrency(MALIKI_NISAB.silver * defaultPrices.silver999)}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.settingButton, formData.nisabBase === "gold" && { backgroundColor: MALIKI_PRIMARY }]} onPress={() => handleInputChange("nisabBase", "gold")}>
-                    <Gem size={20} color={formData.nisabBase === "gold" ? "#ffffff" : MALIKI_PRIMARY} />
-                    <Text style={[styles.settingButtonText, formData.nisabBase === "gold" && { color: "#ffffff" }, { color: getTextColor() }]}>{t("gold")}</Text>
-                    <Text style={[styles.settingButtonSubtext, formData.nisabBase === "gold" && { color: "#ffffffCC" }, { color: getSecondaryTextColor() }]}>{formatCurrency(MALIKI_NISAB.gold * defaultPrices.gold24k)}</Text>
-                  </TouchableOpacity>
-                </View>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: th.text(), marginBottom: 12 }}>{t("nisab_base")}</Text>
+              <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+                {[
+                  { id: "silver", label: t("silver"), icon: Coins, value: formatCurrency(MALIKI_NISAB.silver * defaultPrices.silver999) },
+                  { id: "gold",   label: t("gold"),   icon: Gem,   value: formatCurrency(MALIKI_NISAB.gold   * defaultPrices.gold24k) },
+                ].map(({ id, label, icon: Icon, value }) => {
+                  const sel = formData.nisabBase === id;
+                  return (
+                    <TouchableOpacity key={id} onPress={() => handleInputChange("nisabBase", id)}
+                      style={[styles.nisabBtn, { backgroundColor: sel ? COLORS.primary : th.card2(), borderColor: sel ? COLORS.primary : th.border() }]}>
+                      <Icon size={20} color={sel ? "#fff" : th.primaryColor()} />
+                      <Text style={{ fontSize: 14, fontWeight: "700", marginTop: 8, color: sel ? "#fff" : th.text() }}>{label}</Text>
+                      <Text style={{ fontSize: 11, marginTop: 4, color: sel ? "rgba(255,255,255,0.75)" : th.textSec() }}>{value}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              {/* Hawl */}
-              <View style={styles.settingSection}>
-                <Text style={[styles.settingSectionTitle, { color: getTextColor() }]}>{t("hawl_period")}</Text>
-                <View style={styles.hawlInfoCard}>
-                  <Clock size={24} color={MALIKI_PRIMARY} />
-                  <View style={styles.hawlInfoTexts}>
-                    <Text style={[styles.hawlStatus, { color: hawlStatus.completed ? '#10b981' : '#f59e0b' }]}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: th.text(), marginBottom: 12 }}>{t("hawl_period")}</Text>
+              <View style={[styles.settingCard, { backgroundColor: hawlStatus.completed ? (isDark ? "#0f2a1a" : "#f0faf4") : th.hawlBg(), borderColor: hawlStatus.completed ? COLORS.primary + "30" : th.hawlText() + "50" }]}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                  <Clock size={22} color={hawlStatus.completed ? COLORS.success : th.hawlText()} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: hawlStatus.completed ? COLORS.success : th.hawlText(), marginBottom: 4 }}>
                       {hawlStatus.completed ? t("hawl_completed") : t("hawl_not_completed")}
                     </Text>
                     {!hawlStatus.completed && hawlStatus.daysRemaining > 0 && (
-                      <Text style={[styles.hawlDays, { color: getSecondaryTextColor() }]}>
-                        {t("days_remaining")}: {hawlStatus.daysRemaining} {t("days")}
-                      </Text>
+                      <Text style={{ fontSize: 13, color: th.textSec() }}>{t("days_remaining")}: {hawlStatus.daysRemaining} {t("days")}</Text>
                     )}
                     {hawlStatus.nextAnniversary && (
-                      <Text style={[styles.hawlDate, { color: getSecondaryTextColor() }]}>
+                      <Text style={{ fontSize: 12, color: th.textTer(), marginTop: 2 }}>
                         {t("next_anniversary")}: {new Date(hawlStatus.nextAnniversary).toLocaleDateString()}
                       </Text>
                     )}
-                    {hawlStatus.message && !hawlStatus.completed && (
-                      <Text style={[styles.hawlMessage, { color: MALIKI_PRIMARY }]}>{hawlStatus.message}</Text>
-                    )}
                   </View>
                 </View>
-                <Text style={[styles.hawlNote, { color: getSecondaryTextColor(), marginTop: 12 }]}>
-                  ℹ️ {t("hawl_note")}
-                </Text>
               </View>
+              <View style={{ height: 30 }} />
             </ScrollView>
-
-            <View style={styles.modalActions}>
-              <Button title={t("apply")} onPress={() => setShowSettingsModal(false)} backgroundColor={MALIKI_PRIMARY} textColor="#ffffff" style={styles.applyButton} />
+            <View style={[styles.sheetFooter, { borderTopColor: th.border() }]}>
+              <Button title={t("apply")} onPress={() => setShowSettingsModal(false)} backgroundColor={COLORS.primary} textColor="#fff" style={{ flex: 1, minHeight: 50 }} />
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal Résultats */}
-      <Modal visible={showResultsModal} animationType="slide" transparent={true} onRequestClose={() => setShowResultsModal(false)}>
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: getCardColor() }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: getTextColor() }]}>{t("zakat_calculation_details")}</Text>
-              <TouchableOpacity onPress={() => setShowResultsModal(false)} style={styles.closeButton}>
-                <Text style={{ color: getSecondaryTextColor() }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScroll}>
-              {results && (
-                <>
-                  <View style={styles.modalSummary}>
-                    {[
-                      { label: t("total_assets"), value: results.totalAssets },
-                      { label: t("total_deductions"), value: results.totalDeductions },
-                      { label: t("net_worth"), value: results.netWorth },
-                      { label: t("nisab_threshold"), value: results.nisabThreshold },
-                    ].map((item, i) => (
-                      <View key={i} style={styles.summaryItem}>
-                        <Text style={[styles.summaryLabel, { color: getSecondaryTextColor() }]}>{item.label}</Text>
-                        <Text style={[styles.summaryValue, { color: getTextColor() }]}>{formatCurrency(item.value)}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={[
-                    styles.statusCard,
-                    results.isZakatDue ? styles.statusDue :
-                    !results.hawlCompleted ? styles.statusHawl :
-                    !results.isNisabReached ? [styles.statusNisab, { backgroundColor: getNisabNotReachedBackground(), borderLeftColor: getNisabNotReachedTextColor() }] :
-                    styles.statusNoZakat
-                  ]}>
-                    <View style={styles.statusHeader}>
-                      {results.isZakatDue ? <CheckCircle size={24} color={MALIKI_PRIMARY} /> :
-                       !results.hawlCompleted ? <Clock size={24} color="#f59e0b" /> :
-                       !results.isNisabReached ? <AlertCircle size={24} color={getNisabNotReachedTextColor()} /> :
-                       <Info size={24} color="#94a3b8" />}
-                      <Text style={[styles.statusTitle, {
-                        color: results.isZakatDue ? MALIKI_PRIMARY :
-                               !results.hawlCompleted ? "#f59e0b" :
-                               !results.isNisabReached ? getNisabNotReachedTextColor() : "#94a3b8"
-                      }]}>
-                        {results.isZakatDue ? t("zakat_due_maliki") :
-                         !results.hawlCompleted ? t("hawl_not_completed") :
-                         !results.isNisabReached ? t("nisab_not_reached") :
-                         t("no_zakat_due")}
-                      </Text>
-                    </View>
-                    {results.isZakatDue && (
-                      <View style={styles.zakatAmountCard}>
-                        <Text style={[styles.zakatAmountLabel, { color: getSecondaryTextColor() }]}>{t("zakat_amount")}</Text>
-                        <Text style={[styles.zakatAmountValue, { color: MALIKI_PRIMARY }]}>{formatCurrency(results.zakatAmount)}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {results.isZakatDue && results.zakatAmount > 0 && (
-                    <View style={styles.finalCalculation}>
-                      <Text style={[styles.finalCalculationTitle, { color: getTextColor() }]}>{t("final_calculation")}</Text>
-                      <View style={styles.finalAmount}>
-                        <Text style={[styles.finalAmountLabel, { color: getSecondaryTextColor() }]}>{t("total_zakat_due")}</Text>
-                        <Text style={[styles.finalAmountValue, { color: MALIKI_PRIMARY }]}>{formatCurrency(results.zakatAmount)}</Text>
-                      </View>
-                    </View>
-                  )}
-                </>
-              )}
-            </ScrollView>
-            <View style={styles.modalActions}>
-              <Button title={t("close")} onPress={() => setShowResultsModal(false)} variant="outline" textColor={MALIKI_PRIMARY} borderColor={MALIKI_PRIMARY} />
-              <Button title={t("save_calculation")} onPress={handleSaveCalculation} backgroundColor={MALIKI_PRIMARY} textColor="#ffffff" />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal Madhab Info */}
-      <Modal visible={showMadhabInfo} animationType="fade" transparent={true} onRequestClose={() => setShowMadhabInfo(false)}>
-        <View style={styles.infoModalContainer}>
-          <View style={[styles.infoModalContent, { backgroundColor: getCardColor() }]}>
-            <View style={styles.infoModalHeader}>
-              <View style={[styles.madhabIcon, { backgroundColor: MALIKI_PRIMARY + "20" }]}>
-                <Crown size={32} color={MALIKI_PRIMARY} />
-              </View>
-              <Text style={[styles.infoModalTitle, { color: getTextColor() }]}>{t("maliki_school")}</Text>
-              <Text style={[styles.infoModalSubtitle, { color: MALIKI_PRIMARY }]}>الإمام مالك بن أنس</Text>
-            </View>
-            <View style={styles.infoModalScrollContainer}>
-              <ScrollView style={styles.infoModalScroll} showsVerticalScrollIndicator={true} contentContainerStyle={styles.infoModalScrollContent}>
-                <Text style={[styles.infoModalText, { color: getTextColor() }]}>{t("maliki_school_description")}</Text>
-                <View style={styles.infoSection}>
-                  <Text style={[styles.infoSectionTitle, { color: getTextColor() }]}>{t("key_features")}</Text>
-                  {[t("maliki_feature_1"), t("maliki_feature_2"), t("maliki_feature_3"), t("maliki_feature_4"), t("maliki_feature_5")].map((feature, index) => (
-                    <View key={index} style={styles.featureItem}>
-                      <Sparkles size={16} color={MALIKI_PRIMARY} />
-                      <Text style={[styles.featureText, { color: getSecondaryTextColor() }]}>{feature}</Text>
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-            <Button title={t("understand")} onPress={() => setShowMadhabInfo(false)} backgroundColor={MALIKI_PRIMARY} textColor="#ffffff" style={styles.infoModalButton} />
           </View>
         </View>
       </Modal>
@@ -1440,249 +787,82 @@ const refreshActifsForYear = async (zakatAnnuelId) => {
   );
 };
 
+// ── Reusable section renderer ──
+const renderSection = (id, title, IconComp, th, expandedSections, onToggle, children) => {
+  const expanded = expandedSections[id];
+  return (
+    <View style={[sectionStyles.section, { backgroundColor: th.card(), borderColor: th.border() }]}>
+      <TouchableOpacity onPress={onToggle} style={sectionStyles.header} activeOpacity={0.7}>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={[sectionStyles.iconWrap, { backgroundColor: COLORS.primary + "20" }]}>
+            <IconComp size={17} color={COLORS.primary} />
+          </View>
+          <Text style={[sectionStyles.title, { color: th.text() }]}>{title}</Text>
+        </View>
+        {expanded ? <ChevronUp size={17} color={th.textSec()} /> : <ChevronDown size={17} color={th.textSec()} />}
+      </TouchableOpacity>
+      {expanded && children}
+    </View>
+  );
+};
+
+const sectionStyles = StyleSheet.create({
+  section: { borderRadius: 14, marginBottom: 12, borderWidth: 1, overflow: "hidden" },
+  header:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 },
+  iconWrap:{ width: 34, height: 34, borderRadius: 17, justifyContent: "center", alignItems: "center", marginRight: 10 },
+  title:   { fontSize: 15, fontWeight: "700", flex: 1 },
+});
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  headerGradient: { paddingTop: Platform.OS === "ios" ? 45 : 35, paddingHorizontal: 16, paddingBottom: 12, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  header: { marginTop: 8 },
-  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  titleContainer: { flexDirection: "row", alignItems: "center", flex: 1 },
-  titleIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center", marginRight: 10 },
-  title: { fontSize: 20, fontWeight: "bold" },
-  subtitle: { fontSize: 11, fontWeight: "600", marginTop: 2 },
-  madhabButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-  fixedResultsBar: { position: 'absolute', top: Platform.OS === "ios" ? 105 : 95, left: 16, right: 16, zIndex: 100, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
-  fixedResultsContent: { borderRadius: 12, padding: 12, borderWidth: 2, borderBottomWidth: 4 },
-  fixedResultsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  fixedResultsStatus: { flexDirection: "row", alignItems: "center", flex: 1 },
-  fixedStatusText: { fontSize: 14, fontWeight: "bold", marginLeft: 6 },
-  settingsButton: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center", marginLeft: 8 },
+  savingOverlay:   { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, justifyContent: "center", alignItems: "center" },
+  savingBox:       { borderRadius: 18, padding: 30, alignItems: "center", minWidth: 190 },
+  fixedResultsBar:     { position: "relative", top: Platform.OS === "ios" ? 105 : 5, marginHorizontal: 16, zIndex: 100, elevation: 10 },
+  fixedResultsContent: { borderRadius: 14, padding: 14, borderWidth: 1.5, borderBottomWidth: 3, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8 },
+  fixedResultsHeader:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
+  fixedResultsStatus:  { flexDirection: "row", alignItems: "center", flex: 1 },
+  statusIconBubble:    { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 8 },
+  fixedStatusText:     { fontSize: 14, fontWeight: "700" },
+  existingBadge:       { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  existingBadgeText:   { fontSize: 10, fontWeight: "700" },
+  settingsButton:      { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center", marginLeft: 8 },
   fixedResultsDetails: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  fixedDetailItem: { flex: 1, marginRight: 8 },
-  fixedDetailLabel: { fontSize: 10, marginBottom: 2 },
-  fixedDetailValue: { fontSize: 14, fontWeight: "bold" },
-  fixedZakatValue: { fontSize: 16, fontWeight: "bold" },
-  fixedViewDetails: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4 },
-  fixedViewDetailsText: { fontSize: 11, fontWeight: "500", marginRight: 4 },
-  scrollView: { flex: 1 },
-  tabsContainer: { paddingHorizontal: 16, marginTop: 8, marginBottom: 12 },
-  tabButton: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
-  tabText: { fontSize: 12, fontWeight: "600", marginLeft: 5 },
-  sectionsContainer: { paddingHorizontal: 16, paddingBottom: 20 },
-  section: { borderRadius: 12, marginBottom: 12, borderWidth: 1, overflow: "hidden" },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 },
-  sectionHeaderLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
-  iconContainer: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center", marginRight: 10 },
-  sectionTitle: { fontSize: 15, fontWeight: "bold", flex: 1 },
-  sectionContent: { paddingHorizontal: 14, paddingBottom: 14 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-  halfInput: { width: "48%" },
-  pickerLabel: { fontSize: 12, fontWeight: "500", marginBottom: 6 },
-  pickerButtons: { flexDirection: "row" },
-  purityButton: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, marginRight: 6, borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
-  purityText: { fontSize: 11, fontWeight: "500" },
-  toggleContainer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.03)" },
-  toggleLabel: { fontSize: 14, fontWeight: "500", flex: 1 },
-  toggleButton: { width: 44, height: 24, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.1)", justifyContent: "center", padding: 2 },
-  toggleCircle: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#ffffff" },
-  livestockGrid: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
-  livestockItem: { width: "48%", alignItems: "center" },
-  livestockIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center", marginBottom: 8 },
-  livestockNote: { fontSize: 10, marginTop: 4, textAlign: "center" },
-  livestockInfo: { flexDirection: "row", alignItems: "flex-start", backgroundColor: "rgba(0,0,0,0.05)", padding: 12, borderRadius: 8, marginTop: 16 },
-  livestockInfoText: { fontSize: 12, lineHeight: 16, flex: 1, marginLeft: 8 },
-  pickerContainer: { marginBottom: 12 },
-  irrigationButton: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, marginRight: 8, borderWidth: 1, borderColor: "rgba(0,0,0,0.1)", flex: 1, justifyContent: "center" },
-  irrigationText: { fontSize: 12, fontWeight: "500", marginLeft: 8 },
-  bottomSpacer: { height: 100 },
-  actionsContainer: { position: "relative", bottom: 0, left: 0, right: 0, borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 8, paddingBottom: Platform.OS === "ios" ? 25 : 16 },
-  actions: { flexDirection: "row", justifyContent: "space-between" },
-  historyButton: { flex: 1, marginRight: 6, minHeight: 48 },
-  saveButton: { flex: 1, marginHorizontal: 6, minHeight: 48 },
-  resetButton: { flex: 1, marginLeft: 6, minHeight: 48 },
-  principlesSection: { marginHorizontal: 16, marginBottom: 20, alignItems: "center" },
-  principlesTitle: { fontSize: 18, fontWeight: "bold" },
-  principlesScrollContainer: { paddingHorizontal: 10, paddingVertical: 5 },
-  principleCard: { width: 200, padding: 16, borderRadius: 16, marginHorizontal: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  principleIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center", marginBottom: 12 },
-  principleTitle: { fontSize: 14, fontWeight: "bold", marginBottom: 8 },
-  principleDesc: { fontSize: 12, lineHeight: 16 },
-  modalContainer: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.85 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.1)" },
-  modalHeaderLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
-  modalIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center", marginRight: 12 },
-  modalTitle: { fontSize: 20, fontWeight: "bold" },
-  modalSubtitle: { fontSize: 12, marginTop: 2 },
-  closeButton: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
-  modalScroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
-  modalActions: { padding: 20, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.1)" },
-  applyButton: { minHeight: 50 },
-  settingSection: { marginBottom: 24 },
-  settingSectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 4 },
-  settingButtons: { flexDirection: "row", justifyContent: "space-between" },
-  settingButton: { flex: 1, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "rgba(0,0,0,0.1)", alignItems: "center", marginHorizontal: 6 },
-  settingButtonText: { fontSize: 14, fontWeight: "600", marginTop: 8, marginBottom: 4 },
-  settingButtonSubtext: { fontSize: 11 },
-  locationCard: { padding: 16, borderRadius: 12, marginBottom: 16 },
-  locationHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  locationTitle: { fontSize: 16, fontWeight: "bold", marginLeft: 8 },
-  locationDetails: { gap: 8 },
-  locationItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 },
-  locationLabel: { fontSize: 13, fontWeight: "500" },
-  locationValue: { fontSize: 14, fontWeight: "600" },
-  currencyValue: { fontSize: 16, fontWeight: "bold", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6, backgroundColor: MALIKI_PRIMARY + "20" },
-  divider: { height: 1, marginVertical: 16 },
-  hawlInfoCard: { flexDirection: 'row', padding: 16, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.03)', alignItems: 'flex-start', gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
-  hawlInfoTexts: { flex: 1 },
-  hawlStatus: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  hawlDays: { fontSize: 13, marginBottom: 2 },
-  hawlDate: { fontSize: 12, marginBottom: 2 },
-  hawlMessage: { fontSize: 13, fontStyle: 'italic', marginTop: 4 },
-  hawlNote: { fontSize: 11, lineHeight: 16, fontStyle: 'italic', paddingHorizontal: 4 },
-  modalSummary: { marginVertical: 20 },
-  summaryItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.05)" },
-  summaryLabel: { fontSize: 14 },
-  summaryValue: { fontSize: 16, fontWeight: "600" },
-  statusCard: { padding: 16, borderRadius: 12, marginBottom: 20 },
-  statusDue: { backgroundColor: MALIKI_PRIMARY + "10", borderLeftWidth: 4, borderLeftColor: MALIKI_PRIMARY },
-  statusHawl: { backgroundColor: "#fef3c7", borderLeftWidth: 4, borderLeftColor: "#f59e0b" },
-  statusNisab: { borderLeftWidth: 4 },
-  statusNoZakat: { backgroundColor: "#f3f4f6", borderLeftWidth: 4, borderLeftColor: "#94a3b8" },
-  statusHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  statusTitle: { fontSize: 16, fontWeight: "bold", marginLeft: 8 },
-  zakatAmountCard: { backgroundColor: "rgba(255,255,255,0.8)", padding: 12, borderRadius: 8, marginTop: 8 },
-  zakatAmountLabel: { fontSize: 12, marginBottom: 4 },
-  zakatAmountValue: { fontSize: 24, fontWeight: "bold" },
-  finalCalculation: { marginVertical: 20, padding: 16, backgroundColor: "rgba(26, 93, 26, 0.05)", borderRadius: 12 },
-  finalCalculationTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 12, textAlign: "center" },
-  finalAmount: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTopWidth: 2, borderTopColor: "rgba(26, 93, 26, 0.2)" },
-  finalAmountLabel: { fontSize: 16, fontWeight: "600" },
-  finalAmountValue: { fontSize: 24, fontWeight: "bold" },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  loadingText: { marginTop: 12, fontSize: 14 },
-  historySection: { marginBottom: 24 },
-  historySectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
-  emptyText: { textAlign: 'center', fontSize: 14, padding: 20 },
-  historyCard: { padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
-  historyCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  historyYear: { fontSize: 16, fontWeight: 'bold' },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  statusPaid: { backgroundColor: '#10b981' },
-  statusUnpaid: { backgroundColor: '#ef4444' },
-  statusExempt: { backgroundColor: '#94a3b8' },
-  statusText: { color: '#ffffff', fontSize: 11, fontWeight: '600' },
-  historyCardDetails: { marginBottom: 12 },
-  historyDetailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  historyLabel: { fontSize: 13 },
-  historyValue: { fontSize: 14, fontWeight: '600' },
-  historyDate: { fontSize: 11, textAlign: 'right' },
-  historyFilterTabs: { marginBottom: 16 },
-  historyTabButton: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: "rgba(0,0,0,0.1)", gap: 4 },
-  historyTabText: { fontSize: 12, fontWeight: "600", marginLeft: 4 },
-  assetCard: { padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
-  assetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  assetName: { fontSize: 14, fontWeight: '600', flex: 1 },
-  assetTypeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  assetType: { fontSize: 11, fontWeight: "600" },
-  assetDetails: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  assetQuantity: { fontSize: 12 },
-  assetValue: { fontSize: 14, fontWeight: '600' },
-  assetDate: { fontSize: 10, textAlign: 'right' },
-  infoModalContainer: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 },
-  infoModalContent: { width: "100%", height: "70%", maxHeight: SCREEN_HEIGHT * 0.85, borderRadius: 24, padding: 24, flexDirection: "column" },
-  infoModalHeader: { alignItems: "center", marginBottom: 16 },
-  infoModalScrollContainer: { flex: 1, marginVertical: 16, minHeight: 200 },
-  infoModalScroll: { flex: 1 },
-  infoModalScrollContent: { flexGrow: 1, paddingBottom: 10 },
-  madhabIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: "center", alignItems: "center", marginBottom: 16 },
-  infoModalTitle: { fontSize: 24, fontWeight: "bold", textAlign: "center" },
-  infoModalSubtitle: { fontSize: 16, fontWeight: "500", marginTop: 8, textAlign: "center" },
-  infoModalText: { fontSize: 14, lineHeight: 22, marginBottom: 24, textAlign: "center" },
-  infoSection: { marginTop: 16 },
-  infoSectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 16 },
-  featureItem: { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
-  featureText: { fontSize: 14, lineHeight: 20, flex: 1, marginLeft: 12 },
-  infoModalButton: { marginTop: 24 },
-  detailedBreakdown: { marginVertical: 20 },
-  breakdownTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 16 },
-  pricesBanner: {
-  flexDirection:  "row",
-  borderRadius:   10,
-  borderWidth:    1,
-  padding:        12,
-  marginBottom:   16,
-  alignItems:     "center",
-},
-priceItem: {
-  flex:        1,
-  alignItems:  "center",
-},
-priceHeader: {
-  flexDirection:  "row",
-  alignItems:     "center",
-  gap:            4,
-  marginBottom:   4,
-},
-priceLabel: {
-  fontSize:   11,
-  fontWeight: "600",
-},
-priceValue: {
-  fontSize:   15,
-  fontWeight: "bold",
-},
-priceSub: {
-  fontSize:   9,
-  marginTop:  2,
-  textAlign:  "center",
-},
-priceDivider: {
-  width:          1,
-  height:         40,
-  marginHorizontal: 8,
-},
-purityPrice: {
-  fontSize:   9,
-  marginTop:  2,
-  textAlign:  "center",
-},
-computedValue: {
-  flexDirection:   "row",
-  justifyContent:  "space-between",
-  alignItems:      "center",
-  borderRadius:    8,
-  padding:         10,
-  marginBottom:    12,
-},
-computedLabel: {
-  fontSize: 12,
-},
-computedTotal: {
-  fontSize:   14,
-  fontWeight: "bold",
-},
-  // Styles à remplacer/ajouter
-purityButtonsColumn: {
-  flexDirection: "column",
-  gap: 6,
-},
-purityButtonRow: {
-  flexDirection:   "row",
-  justifyContent:  "space-between",
-  alignItems:      "center",
-  paddingHorizontal: 10,
-  paddingVertical:   7,
-  borderRadius:    8,
-  borderWidth:     1,
-},
-purityTextRow: {
-  fontSize:   13,
-  fontWeight: "700",
-},
-purityPriceRow: {
-  fontSize:   11,
-  fontWeight: "500",
-},
+  fixedDetailItem:     { flex: 1 },
+  fixedDetailDivider:  { width: 1, height: 36, marginHorizontal: 12 },
+  fixedDetailLabel:    { fontSize: 10, fontWeight: "600", marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.3 },
+  fixedDetailValue:    { fontSize: 15, fontWeight: "700" },
+  fixedZakatValue:     { fontSize: 17, fontWeight: "800" },
+  fixedViewDetails:    { flexDirection: "row", alignItems: "center", gap: 3 },
+  fixedViewDetailsText:{ fontSize: 11, fontWeight: "600" },
+  tabButton:           { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 8, borderWidth: 1 },
+  tabText:             { fontSize: 12, marginLeft: 5 },
+  pricesBanner:        { flexDirection: "row", borderRadius: 12, borderWidth: 1, padding: 13, marginBottom: 16, alignItems: "center" },
+  priceItem:           { flex: 1, alignItems: "center" },
+  priceLabel:          { fontSize: 11, fontWeight: "600" },
+  priceValue:          { fontSize: 15, fontWeight: "800" },
+  priceSub:            { fontSize: 9, marginTop: 3, textAlign: "center" },
+  priceDivider:        { width: 1, height: 36, marginHorizontal: 10 },
+  computedRow:         { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 10, borderWidth: 1, padding: 11, marginBottom: 12 },
+  toggleTrack:         { width: 44, height: 24, borderRadius: 12, justifyContent: "center", padding: 2 },
+  toggleThumb:         { width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  principleCard:       { width: 188, padding: 16, borderRadius: 16, marginHorizontal: 6, borderWidth: 1, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
+  modalOverlay:        { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
+  confirmBox:          { width: "100%", borderRadius: 22, padding: 24 },
+  confirmIconBubble:   { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 },
+  confirmTitle:        { fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 8 },
+  confirmInfoCard:     { borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1 },
+  confirmBtnCancel:    { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, alignItems: "center" },
+  confirmBtnUpdate:    { flex: 2, padding: 14, borderRadius: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  sheetOverlay:        { flex: 1, justifyContent: "flex-end" },
+  sheet:               { borderTopLeftRadius: 26, borderTopRightRadius: 26, maxHeight: SCREEN_HEIGHT * 0.88 },
+  sheetHeader:         { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1 },
+  sheetTitle:          { fontSize: 20, fontWeight: "800" },
+  closeBtn:            { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
+  sheetFooter:         { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1 },
+  settingCard:         { borderRadius: 14, padding: 16, borderWidth: 1, marginBottom: 4 },
+  nisabBtn:            { flex: 1, padding: 16, borderRadius: 14, borderWidth: 1.5, alignItems: "center" },
+  resultsGrid:         { borderRadius: 12, borderWidth: 1, overflow: "hidden", marginBottom: 16 },
+  resultsRow:          { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1 },
+  statusBanner:        { borderLeftWidth: 4, borderRadius: 12, padding: 16, marginBottom: 10 },
 });
 
 export default ZakatCalculatorScreen;
