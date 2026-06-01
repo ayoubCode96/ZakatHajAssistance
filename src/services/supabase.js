@@ -5,6 +5,7 @@ import * as Linking from "expo-linking";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { locationService } from "./locationService";
+import { t } from "i18next";
 
 const supabaseUrl = "https://nfddhkvvwslmzzuqkaqg.supabase.co";
 const supabaseAnonKey =
@@ -14,15 +15,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: Platform.OS === "web", 
-  },});
+    detectSessionInUrl: Platform.OS === "web",
+  },
+});
 
 // Fonction simple pour obtenir la bonne URL
 const getRedirectUrl = () => {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     return window.location.origin;
   }
-  return "exp://ribh9ae-ayoubel-8081.exp.direct/";
+  return "eexp://sico9gg-ayoubel-8081.exp.direct";
 };
 
 // Fonction pour créer une URL deep link correcte avec Linking
@@ -32,6 +34,9 @@ const createDeepLinkUrl = (path = "") => {
   console.log("Deep link URL créée:", url);
   return url;
 };
+
+
+
 
 console.log("URL de redirection:", getRedirectUrl());
 
@@ -47,7 +52,7 @@ export const authService = {
       if (error) throw error;
       return { success: true, user: data.user, session: data.session };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: t("login_error") };
     }
   },
 
@@ -72,11 +77,11 @@ export const authService = {
     }
   },
 
-  // Connexion OAuth (Google/Gmail) - CORRIGÉ
-   async signInWithGoogle() {
+  // Connexion OAuth (Google/Gmail)
+  async signInWithGoogle() {
     try {
       const redirectUrl = getRedirectUrl();
-      
+
       // Configuration différente selon la plateforme
       const options = {
         provider: "google",
@@ -90,7 +95,7 @@ export const authService = {
       };
 
       // Pour le web, laisser Supabase gérer la redirection automatiquement
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         options.options.skipBrowserRedirect = false;
       } else {
         // Pour mobile, utiliser WebBrowser
@@ -100,36 +105,39 @@ export const authService = {
       const { data, error } = await supabase.auth.signInWithOAuth(options);
 
       if (error) throw error;
-      
+
       // Pour mobile seulement: gérer l'ouverture du navigateur
-      if (Platform.OS !== 'web' && data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-        
+      if (Platform.OS !== "web" && data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl,
+        );
+
         console.log("OAuth result:", result);
-        
+
         if (result.type === "success") {
           // Extraire les tokens de l'URL
           const url = new URL(result.url);
           const params = new URLSearchParams(url.hash.substring(1));
-          const access_token = params.get('access_token');
-          const refresh_token = params.get('refresh_token');
-          
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
+
           if (access_token) {
-            const { data: sessionData, error: sessionError } = 
+            const { data: sessionData, error: sessionError } =
               await supabase.auth.setSession({
                 access_token,
                 refresh_token,
               });
-            
+
             if (sessionError) throw sessionError;
-            
+
             return { success: true, session: sessionData.session };
           }
         } else if (result.type === "dismiss") {
           return { success: false, error: "Authentification annulée" };
         }
       }
-      
+
       // Pour le web, la redirection est automatique
       return { success: true };
     } catch (error) {
@@ -141,7 +149,7 @@ export const authService = {
   async signInWithFacebook() {
     try {
       const redirectUrl = getRedirectUrl();
-      
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: {
@@ -150,12 +158,12 @@ export const authService = {
       });
 
       if (error) throw error;
-      
+
       // Ouvre le navigateur seulement pour OAuth, pas pour email
-      if (data?.url && Platform.OS !== 'web') {
+      if (data?.url && Platform.OS !== "web") {
         await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
       }
-      
+
       return { success: true, data };
     } catch (error) {
       return { success: false, error: error.message };
@@ -165,30 +173,31 @@ export const authService = {
   // Déconnexion
   async signOut() {
     console.log("Starting signOut...");
-    
+
     try {
       // 1. Appeler signOut de Supabase
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) {
         console.error("Supabase signOut error:", error);
         throw error;
       }
-      
+
       console.log("Supabase signOut successful");
-      
+
       // 2. Nettoyer AsyncStorage manuellement
       try {
         const keys = await AsyncStorage.getAllKeys();
-        const authKeys = keys.filter(key => 
-          key.includes('supabase') || 
-          key.includes('sb-') || 
-          key.includes('auth') ||
-          key.includes('token')
+        const authKeys = keys.filter(
+          (key) =>
+            key.includes("supabase") ||
+            key.includes("sb-") ||
+            key.includes("auth") ||
+            key.includes("token"),
         );
-        
+
         console.log("Found auth keys to remove:", authKeys);
-        
+
         if (authKeys.length > 0) {
           await AsyncStorage.multiRemove(authKeys);
           console.log("AsyncStorage cleaned");
@@ -196,25 +205,25 @@ export const authService = {
       } catch (storageError) {
         console.warn("Could not clean AsyncStorage:", storageError);
       }
-      
+
       // 3. Forcer une réinitialisation
       // Cette ligne est importante pour vider le cache interne de Supabase
       await supabase.auth.getSession();
-      
+
       console.log("Sign out completed");
       return { success: true };
     } catch (error) {
       console.error("Sign out process error:", error);
-      
+
       // Même en cas d'erreur, tenter de nettoyer
       try {
         await AsyncStorage.multiRemove([
-          'supabase.auth.token',
-          'sb-access-token',
-          'sb-refresh-token'
+          "supabase.auth.token",
+          "sb-access-token",
+          "sb-refresh-token",
         ]);
       } catch {}
-      
+
       return { success: false, error: error.message };
     }
   },
@@ -249,7 +258,7 @@ export const authService = {
     try {
       const resetUrl = createDeepLinkUrl("password-reset");
       console.log("URL de reset envoyée à Supabase:", resetUrl);
-      
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: resetUrl,
       });
@@ -266,25 +275,6 @@ export const userService = {
   // Créer un profil utilisateur
   async createProfile(userId, userData) {
     try {
-      const locationResult = await locationService.getCurrentLocation();
-  
-  let pays = "";
-  let ville = "";
-
-  if (locationResult.success) {
-    const { latitude, longitude } = locationResult.location;
-    
-    // Obtenir les informations de géocodage
-    const geocodeResult = await locationService.getCountryFromCoords(
-      latitude, 
-      longitude
-    );
-    
-    if (geocodeResult.success) {
-      pays = geocodeResult.country || "";
-      ville = geocodeResult.city || "";
-    }
-  }
       const { data, error } = await supabase
         .from("profils_utilisateurs")
         .insert([
@@ -298,8 +288,8 @@ export const userService = {
             theme: "system",
             date_creation: new Date(),
             date_mise_a_jour: new Date(),
-            pays: pays ? pays : null,
-            ville: ville ? ville : null,
+            pays: null,
+            ville: null,
           },
         ])
         .select()
@@ -348,33 +338,46 @@ export const userService = {
     }
   },
   updateUserLocation: async (userId) => {
-  try {
-    // Récupérer la localisation
-    const locationResult = await locationService.getCurrentLocation();
-    
-    if (!locationResult.success) return;
+    try {
+      const locationResult = await locationService.getCurrentLocation();
 
-    const { latitude, longitude } = locationResult.location;
-    const geocodeResult = await locationService.getCountryFromCoords(latitude, longitude);
-    
-    if (!geocodeResult.success) return;
+      if (!locationResult.success) {
+        console.warn("❌ getCurrentLocation échoué:", locationResult.error);
+        return;
+      }
 
-    // Mettre à jour ONLY le pays et la ville
-    const { error } = await supabase
-      .from('profils_utilisateurs')
-      .update({
-        pays: geocodeResult.country || '',
-        ville: geocodeResult.city || '',
-        date_mise_a_jour: new Date()
-      })
-      .eq('id_utilisateur', userId);
+      const { latitude, longitude } = locationResult.location;
 
-    if (error) {
-      console.warn('Erreur mise à jour localisation:', error);
+      const geocodeResult = await locationService.getCountryFromCoords(
+        latitude,
+        longitude,
+      );
+
+      if (!geocodeResult.success) {
+        console.warn("❌ getCountryFromCoords échoué:", geocodeResult.error);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("profils_utilisateurs")
+        .update({
+          pays: geocodeResult.country || "",
+          ville: geocodeResult.city || "",
+          date_mise_a_jour: new Date(),
+        })
+        .eq("id_utilisateur", userId);
+
+      if (error) {
+        console.warn("❌ Supabase update error:", error);
+      } else {
+        console.log(
+          "✅ Localisation mise à jour:",
+          geocodeResult.country,
+          geocodeResult.city,
+        );
+      }
+    } catch (error) {
+      console.warn("❌ Localisation échouée:", error.message);
     }
-
-  } catch (error) {
-    console.warn('Localisation échouée:', error.message);
-  }
-},
+  },
 };

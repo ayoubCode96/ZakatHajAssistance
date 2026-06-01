@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useRef } from 'react';
-import AlertDialog from '../components/AlertDialog';
-import { useAppTranslation } from '../hooks/useTranslation';
+import React, { createContext, useContext, useRef } from "react";
+import AlertDialog from "../components/AlertDialog";
+import { useAppTranslation } from "../hooks/useTranslation";
 
 const AlertContext = createContext();
 
@@ -14,17 +14,17 @@ export const AlertProvider = ({ children }) => {
 
   const confirm = (title, message, onConfirm, onCancel = null) => {
     const buttons = [
-      { text: t('cancel'), onPress: onCancel, style: 'cancel' },
-      { text: t('ok'), onPress: onConfirm, style: 'destructive' },
+      { text: t("cancel"), onPress: onCancel, style: "cancel" },
+      { text: t("ok"), onPress: onConfirm, style: "destructive" },
     ];
     alertRef.current?.alert(title, message, buttons);
   };
 
-  const success = (title, message = '') => {
+  const success = (title, message = "") => {
     alertRef.current?.success(title, message);
   };
 
-  const error = (title, message = '') => {
+  const error = (title, message = "") => {
     alertRef.current?.error(title, message);
   };
 
@@ -46,7 +46,7 @@ export const AlertProvider = ({ children }) => {
 export const useAlert = () => {
   const context = useContext(AlertContext);
   if (!context) {
-    throw new Error('useAlert doit être utilisé dans un AlertProvider');
+    throw new Error("useAlert doit être utilisé dans un AlertProvider");
   }
   return context;
 };

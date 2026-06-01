@@ -1,19 +1,18 @@
-import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
-import { Calculator } from 'lucide-react-native';
+import React from "react";
+import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
+import { useTheme } from "../context/ThemeContext";
+import { Calculator } from "lucide-react-native";
 
 const LoadingScreen = ({ message = "Chargement..." }) => {
   const { currentTheme } = useTheme();
 
-  const getBackgroundColor = () => 
-    currentTheme === 'dark' ? '#1f2937' : '#f8fafc';
+  const getBackgroundColor = () =>
+    currentTheme === "dark" ? "#1f2937" : "#f8fafc";
 
-  const getTextColor = () =>
-    currentTheme === 'dark' ? '#ffffff' : '#1f2937';
+  const getTextColor = () => (currentTheme === "dark" ? "#ffffff" : "#1f2937");
 
   const getSecondaryTextColor = () =>
-    currentTheme === 'dark' ? '#d1d5db' : '#6b7280';
+    currentTheme === "dark" ? "#d1d5db" : "#6b7280";
 
   return (
     <View style={[styles.container, { backgroundColor: getBackgroundColor() }]}>
@@ -22,7 +21,11 @@ const LoadingScreen = ({ message = "Chargement..." }) => {
         <Text style={[styles.title, { color: getTextColor() }]}>
           Zakati & Hajj Assistant
         </Text>
-        <ActivityIndicator size="large" color="#3b82f6" style={styles.spinner} />
+        <ActivityIndicator
+          size="large"
+          color="#3b82f6"
+          style={styles.spinner}
+        />
         <Text style={[styles.message, { color: getSecondaryTextColor() }]}>
           {message}
         </Text>
@@ -37,32 +40,32 @@ const LoadingScreen = ({ message = "Chargement..." }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 32,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 16,
     marginBottom: 32,
-    textAlign: 'center',
+    textAlign: "center",
   },
   spinner: {
     marginBottom: 16,
   },
   message: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 8,
   },
   hint: {
     fontSize: 12,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    textAlign: "center",
+    fontStyle: "italic",
   },
 });
 

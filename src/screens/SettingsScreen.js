@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet } from 'react-native';
-import { useAppTranslation } from '../hooks/useTranslation';
-import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
-import { useCurrency } from '../context/CurrencyContext';
-import { useAlert } from '../context/AlertContext';
-import { 
-  Settings, 
-  Moon, 
-  Sun, 
-  Languages, 
-  LogOut, 
-  User, 
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Switch,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
+import { useAppTranslation } from "../hooks/useTranslation";
+import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import { useCurrency } from "../context/CurrencyContext";
+import { useAlert } from "../context/AlertContext";
+import {
+  Settings,
+  Moon,
+  Sun,
+  Languages,
+  LogOut,
+  User,
   Globe,
-  RefreshCw 
-} from 'lucide-react-native';
-import Button from '../components/Button';
+  RefreshCw,
+} from "lucide-react-native";
+import Button from "../components/Button";
 
 const SettingsScreen = () => {
   const { t, currentLanguage, changeLanguage } = useAppTranslation();
@@ -28,40 +35,51 @@ const SettingsScreen = () => {
 
   const handleLanguageChange = (lang) => {
     changeLanguage(lang);
-    success(t('success'), `Langue changée en ${lang.toUpperCase()}`);
+    success(t("success"), `Langue changée en ${lang.toUpperCase()}`);
   };
 
   const handleRefreshData = async () => {
     setRefreshing(true);
     await refreshData();
     setRefreshing(false);
-    success(t('success'), 'Données mises à jour');
+    success(t("success"), "Données mises à jour");
   };
 
   const handleLogout = () => {
     confirm(
-      t('logout'),
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      signOut
+      t("logout"),
+      "Êtes-vous sûr de vouloir vous déconnecter ?",
+      signOut,
     );
   };
 
-  const getBackgroundColor = () => 
-    currentTheme === 'dark' ? '#1f2937' : '#f8fafc';
+  const getBackgroundColor = () =>
+    currentTheme === "dark" ? "#1f2937" : "#f8fafc";
 
-  const getCardColor = () =>
-    currentTheme === 'dark' ? '#374151' : '#ffffff';
+  const getCardColor = () => (currentTheme === "dark" ? "#374151" : "#ffffff");
 
-  const getTextColor = () =>
-    currentTheme === 'dark' ? '#ffffff' : '#1f2937';
+  const getTextColor = () => (currentTheme === "dark" ? "#ffffff" : "#1f2937");
 
   const getSecondaryTextColor = () =>
-    currentTheme === 'dark' ? '#d1d5db' : '#6b7280';
+    currentTheme === "dark" ? "#d1d5db" : "#6b7280";
 
-  const SettingItem = ({ icon: Icon, title, description, action, rightComponent }) => (
+  const SettingItem = ({
+    icon: Icon,
+    title,
+    description,
+    action,
+    rightComponent,
+  }) => (
     <View style={[styles.settingItem, { backgroundColor: getCardColor() }]}>
       <View style={styles.settingLeft}>
-        <View style={[styles.iconContainer, { backgroundColor: currentTheme === 'dark' ? '#4b5563' : '#f3f4f6' }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            {
+              backgroundColor: currentTheme === "dark" ? "#4b5563" : "#f3f4f6",
+            },
+          ]}
+        >
           <Icon size={20} color={getTextColor()} />
         </View>
         <View style={styles.settingText}>
@@ -69,27 +87,31 @@ const SettingsScreen = () => {
             {title}
           </Text>
           {description && (
-            <Text style={[styles.settingDescription, { color: getSecondaryTextColor() }]}>
+            <Text
+              style={[
+                styles.settingDescription,
+                { color: getSecondaryTextColor() },
+              ]}
+            >
               {description}
             </Text>
           )}
         </View>
       </View>
-      <View style={styles.settingRight}>
-        {rightComponent}
-      </View>
+      <View style={styles.settingRight}>{rightComponent}</View>
     </View>
   );
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: getBackgroundColor() }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: getBackgroundColor() }]}
+    >
       <View style={styles.content}>
-        
         {/* En-tête */}
         <View style={styles.header}>
           <Settings size={32} color="#3b82f6" />
           <Text style={[styles.title, { color: getTextColor() }]}>
-            {t('settings')}
+            {t("settings")}
           </Text>
         </View>
 
@@ -100,10 +122,15 @@ const SettingsScreen = () => {
           </Text>
           <SettingItem
             icon={User}
-            title={user?.name || 'Utilisateur'}
+            title={user?.name || "Utilisateur"}
             description={user?.email}
             rightComponent={
-              <Text style={[styles.settingValue, { color: getSecondaryTextColor() }]}>
+              <Text
+                style={[
+                  styles.settingValue,
+                  { color: getSecondaryTextColor() },
+                ]}
+              >
                 Connecté
               </Text>
             }
@@ -116,15 +143,17 @@ const SettingsScreen = () => {
             Apparence
           </Text>
           <SettingItem
-            icon={currentTheme === 'dark' ? Moon : Sun}
-            title={t('theme')}
-            description={currentTheme === 'dark' ? t('dark_mode') : t('light_mode')}
+            icon={currentTheme === "dark" ? Moon : Sun}
+            title={t("theme")}
+            description={
+              currentTheme === "dark" ? t("dark_mode") : t("light_mode")
+            }
             rightComponent={
               <Switch
-                value={currentTheme === 'dark'}
+                value={currentTheme === "dark"}
                 onValueChange={toggleTheme}
-                trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
-                thumbColor={currentTheme === 'dark' ? '#ffffff' : '#ffffff'}
+                trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
+                thumbColor={currentTheme === "dark" ? "#ffffff" : "#ffffff"}
               />
             }
           />
@@ -137,57 +166,68 @@ const SettingsScreen = () => {
           </Text>
           <SettingItem
             icon={Languages}
-            title={t('language')}
+            title={t("language")}
             description={`Langue actuelle: ${currentLanguage.toUpperCase()}`}
             rightComponent={
-              <Text style={[styles.settingValue, { color: getSecondaryTextColor() }]}>
+              <Text
+                style={[
+                  styles.settingValue,
+                  { color: getSecondaryTextColor() },
+                ]}
+              >
                 {currentLanguage.toUpperCase()}
               </Text>
             }
           />
-          
+
           <View style={styles.languageOptions}>
             <TouchableOpacity
               style={[
                 styles.languageOption,
-                currentLanguage === 'fr' && styles.languageOptionSelected
+                currentLanguage === "fr" && styles.languageOptionSelected,
               ]}
-              onPress={() => handleLanguageChange('fr')}
+              onPress={() => handleLanguageChange("fr")}
             >
-              <Text style={[
-                styles.languageOptionText,
-                currentLanguage === 'fr' && styles.languageOptionTextSelected
-              ]}>
+              <Text
+                style={[
+                  styles.languageOptionText,
+                  currentLanguage === "fr" && styles.languageOptionTextSelected,
+                ]}
+              >
                 Français
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[
                 styles.languageOption,
-                currentLanguage === 'ar' && styles.languageOptionSelected
+                currentLanguage === "ar" && styles.languageOptionSelected,
               ]}
-              onPress={() => handleLanguageChange('ar')}
+              onPress={() => handleLanguageChange("ar")}
             >
-              <Text style={[
-                styles.languageOptionText,
-                currentLanguage === 'ar' && styles.languageOptionTextSelected
-              ]}>
+              <Text
+                style={[
+                  styles.languageOptionText,
+                  currentLanguage === "ar" && styles.languageOptionTextSelected,
+                ]}
+              >
                 العربية
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[
                 styles.languageOption,
-                currentLanguage === 'en' && styles.languageOptionSelected
+                currentLanguage === "en" && styles.languageOptionSelected,
               ]}
-              onPress={() => handleLanguageChange('en')}
+              onPress={() => handleLanguageChange("en")}
             >
-              <Text style={[
-                styles.languageOptionText,
-                currentLanguage === 'en' && styles.languageOptionTextSelected
-              ]}>
+              <Text
+                style={[
+                  styles.languageOptionText,
+                  currentLanguage === "en" && styles.languageOptionTextSelected,
+                ]}
+              >
                 English
               </Text>
             </TouchableOpacity>
@@ -202,27 +242,36 @@ const SettingsScreen = () => {
           <SettingItem
             icon={Globe}
             title="Localisation"
-            description={userCountry ? `${userCountry.name}${userCountry.city ? `, ${userCountry.city}` : ''}` : 'Non détectée'}
+            description={
+              userCountry
+                ? `${userCountry.name}${userCountry.city ? `, ${userCountry.city}` : ""}`
+                : "Non détectée"
+            }
             rightComponent={
-              <Text style={[styles.settingValue, { color: getSecondaryTextColor() }]}>
+              <Text
+                style={[
+                  styles.settingValue,
+                  { color: getSecondaryTextColor() },
+                ]}
+              >
                 {userCurrency}
               </Text>
             }
           />
-          
+
           <SettingItem
             icon={RefreshCw}
             title="Actualiser les données"
             description="Prix des métaux et taux de change"
             rightComponent={
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleRefreshData}
                 disabled={refreshing}
                 style={styles.refreshButton}
               >
-                <RefreshCw 
-                  size={20} 
-                  color={refreshing ? '#9ca3af' : '#3b82f6'} 
+                <RefreshCw
+                  size={20}
+                  color={refreshing ? "#9ca3af" : "#3b82f6"}
                 />
               </TouchableOpacity>
             }
@@ -235,7 +284,7 @@ const SettingsScreen = () => {
             Compte
           </Text>
           <Button
-            title={t('logout')}
+            title={t("logout")}
             onPress={handleLogout}
             icon={LogOut}
             variant="outline"
@@ -249,7 +298,11 @@ const SettingsScreen = () => {
             Zakati & Hajj Assistant v1.0.0
           </Text>
           <Text style={[styles.footerText, { color: getSecondaryTextColor() }]}>
-            Développé avec ❤️ pour la communauté musulmane
+            Développé pour la communauté musulmane par: {"\n"} Ayoub El AOUADE -
+            2026
+          </Text>
+          <Text style={[styles.footerText, { color: getSecondaryTextColor() }]}>
+            © 2026 Tous droits réservés
           </Text>
         </View>
       </View>
@@ -265,48 +318,48 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
     marginTop: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 16,
   },
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
   },
   settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   settingText: {
@@ -314,7 +367,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 2,
   },
   settingDescription: {
@@ -325,14 +378,14 @@ const styles = StyleSheet.create({
   },
   settingValue: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   refreshButton: {
     padding: 8,
   },
   languageOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 8,
   },
   languageOption: {
@@ -340,34 +393,34 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    alignItems: 'center',
+    borderColor: "#d1d5db",
+    alignItems: "center",
     marginHorizontal: 4,
   },
   languageOptionSelected: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#dbeafe',
+    borderColor: "#3b82f6",
+    backgroundColor: "#dbeafe",
   },
   languageOptionText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#6b7280',
+    fontWeight: "500",
+    color: "#6b7280",
   },
   languageOptionTextSelected: {
-    color: '#3b82f6',
+    color: "#3b82f6",
   },
   logoutButton: {
-    width: '100%',
+    width: "100%",
   },
   footer: {
     padding: 20,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
   },
   footerText: {
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 4,
   },
 });

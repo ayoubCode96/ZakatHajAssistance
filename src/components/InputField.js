@@ -101,7 +101,9 @@ const InputField = ({
           placeholderTextColor={currentTheme === "dark" ? "#e0d4a0" : "#6b6b6b"}
           secureTextEntry={secureTextEntry}
           keyboardType={
-            keyboardType === "numeric" || keyboardType === "decimal-pad" ? "decimal-pad" : keyboardType
+            keyboardType === "numeric" || keyboardType === "decimal-pad"
+              ? "decimal-pad"
+              : keyboardType
           }
           onFocus={handleFocus}
           onBlur={handleBlur}

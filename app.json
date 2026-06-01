@@ -4,23 +4,24 @@
     "slug": "ZakatiHajjAssistant",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/IconApp.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "zakati",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/AdIcon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.zakati.hajjassistant"
+      "bundleIdentifier": "com.zakati.hajjassistant",
+      "icon": "./assets/IconApp.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/AdIcon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,

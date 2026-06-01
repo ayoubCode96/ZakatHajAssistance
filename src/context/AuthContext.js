@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { authService, userService, supabase } from "../services/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -14,22 +20,24 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const setupAuth = async () => {
       console.log("Setting up auth...");
-      
+
       // Configuration initiale
-      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth event:", event);
-        
-        // Ignorer les événements pendant la déconnexion
-        if (isSigningOut.current && event !== "SIGNED_OUT") {
-          console.log("Ignoring event during sign out:", event);
-          return;
-        }
-        
-        handleAuthEvent(event, session);
-      });
-      
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          console.log("Auth event:", event);
+
+          // Ignorer les événements pendant la déconnexion
+          if (isSigningOut.current && event !== "SIGNED_OUT") {
+            console.log("Ignoring event during sign out:", event);
+            return;
+          }
+
+          handleAuthEvent(event, session);
+        },
+      );
+
       authListener.current = data.subscription;
-      
+
       // Initialisation après un délai pour éviter les conflits
       setTimeout(async () => {
         await initializeAuth();
@@ -48,20 +56,20 @@ export const AuthProvider = ({ children }) => {
 
   const handleAuthEvent = async (event, session) => {
     console.log("Handling auth event:", event);
-    
+
     switch (event) {
       case "SIGNED_IN":
         console.log("User signed in:", session.user.email);
         await fetchUserProfile(session.user);
         break;
-        
+
       case "SIGNED_OUT":
         console.log("User signed out - clearing state");
         setUser(null);
         setProfile(null);
         isSigningOut.current = false;
         break;
-        
+
       case "INITIAL_SESSION":
       case "TOKEN_REFRESHED":
         console.log(event, "- session present:", !!session?.user);
@@ -72,7 +80,7 @@ export const AuthProvider = ({ children }) => {
           setProfile(null);
         }
         break;
-        
+
       default:
         console.log("Unhandled auth event:", event);
     }
@@ -83,14 +91,14 @@ export const AuthProvider = ({ children }) => {
       console.log("Skipping init during sign out");
       return;
     }
-    
+
     try {
       setLoading(true);
       console.log("Initializing auth...");
 
       // Essayer d'abord de récupérer l'utilisateur actuel
       const userResult = await authService.getCurrentUser();
-      
+
       if (userResult.success && userResult.user) {
         console.log("Current user found:", userResult.user.email);
         await fetchUserProfile(userResult.user);
@@ -113,27 +121,31 @@ export const AuthProvider = ({ children }) => {
       console.log("Skipping profile fetch during sign out");
       return;
     }
-    
+
     try {
       const userInfo = {
         id: userData.id,
         email: userData.email,
-        name: userData.user_metadata?.full_name || userData.email?.split("@")[0] || "Utilisateur",
+        name:
+          userData.user_metadata?.full_name ||
+          userData.email?.split("@")[0] ||
+          "Utilisateur",
       };
 
       setUser(userInfo);
 
       const profileResult = await userService.getProfile(userData.id);
       if (profileResult.success && profileResult.profile) {
- 
-
         setProfile(profileResult.profile);
-        setUser(prev => ({
+        setUser((prev) => ({
           ...prev,
           name: profileResult.profile.nom_complet || prev.name,
         }));
       } else {
-        const createResult = await userService.createProfile(userData.id, userData);
+        const createResult = await userService.createProfile(
+          userData.id,
+          userData,
+        );
         if (createResult.success) {
           setProfile(createResult.profile);
         }
@@ -150,19 +162,19 @@ export const AuthProvider = ({ children }) => {
       console.log("Starting sign out process...");
       isSigningOut.current = true; // Désactiver les mises à jour automatiques
       setLoading(true);
-      
+
       // 1. Nettoyer l'état local IMMÉDIATEMENT
       setUser(null);
       setProfile(null);
-      
+
       // 2. Se déconnecter de Supabase
       console.log("Calling supabase.auth.signOut()");
       const result = await authService.signOut();
       console.log("Supabase sign out result:", result);
-      
+
       // 3. Forcer la suppression du stockage local
       await cleanupLocalStorage();
-      
+
       console.log("Sign out completed successfully");
       return { success: true };
     } catch (error) {
@@ -185,23 +197,23 @@ export const AuthProvider = ({ children }) => {
   const cleanupLocalStorage = async () => {
     try {
       console.log("Cleaning up local storage...");
-      
+
       // Supprimer toutes les clés liées à l'auth
       const keys = await AsyncStorage.getAllKeys();
-      const authKeys = keys.filter(key => 
-        key.includes('supabase') || 
-        key.includes('auth') || 
-        key.includes('token')
+      const authKeys = keys.filter(
+        (key) =>
+          key.includes("supabase") ||
+          key.includes("auth") ||
+          key.includes("token"),
       );
-      
+
       if (authKeys.length > 0) {
         await AsyncStorage.multiRemove(authKeys);
         console.log("Removed auth keys:", authKeys);
       }
-      
+
       // Forcer une nouvelle session vide
       await supabase.auth.getSession();
-      
     } catch (error) {
       console.error("Error cleaning localStorage:", error);
     }
@@ -230,29 +242,32 @@ export const AuthProvider = ({ children }) => {
   const signUp = async (email, password, fullName) => {
     try {
       setLoading(true);
-        
-         const data = await supabase
-        .from('profils_utilisateurs')
-        .select('id, user_id, nom_complet')
-        .eq('email', email)
+
+      const data = await supabase
+        .from("profils_utilisateurs")
+        .select("id, user_id, nom_complet")
+        .eq("email", email)
         .maybeSingle();
-        console.log("data",data);
-        
-        if (data.data) {
-          console.warn("Conflit de profil détecté pour l'email:", email);
-          await signOut();
-          return { success: false, error: "ce compte email est déjà associé à un autre profil. Veuillez contacter le support." };
-        }
+      console.log("data", data);
+
+      if (data.data) {
+        console.warn("Conflit de profil détecté pour l'email:", email);
+        await signOut();
+        return {
+          success: false,
+          error:
+            "ce compte email est déjà associé à un autre profil. Veuillez contacter le support.",
+        };
+      }
       const result = await authService.signUp(email, password, fullName);
 
       if (result.success && result.user) {
-        await userService.createProfile(result.user.id, result.user);
+        // await userService.createProfile(result.user.id, result.user);
         await fetchUserProfile(result.user);
         return { success: true };
       } else {
         return { success: false, error: result.error };
       }
-    
     } catch (error) {
       return { success: false, error: "Erreur lors de l'inscription" };
     } finally {

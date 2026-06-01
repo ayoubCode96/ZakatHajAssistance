@@ -162,14 +162,14 @@ const ResultModal = ({
               >
                 {results.isZakatDue
                   ? `Votre patrimoine net (${formatCurrency(
-                      results.netWorth
+                      results.netWorth,
                     )}) dépasse le seuil Nisab (${formatCurrency(
-                      results.nisab
+                      results.nisab,
                     )}). La Zakat est donc due à hauteur de 2.5% de votre patrimoine net.`
                   : `Votre patrimoine net (${formatCurrency(
-                      results.netWorth
+                      results.netWorth,
                     )}) ne dépasse pas le seuil Nisab (${formatCurrency(
-                      results.nisab
+                      results.nisab,
                     )}). La Zakat n'est pas due pour le moment.`}
               </Text>
             </View>

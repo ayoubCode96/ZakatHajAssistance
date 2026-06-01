@@ -77,7 +77,7 @@ const RegisterScreen = ({ navigation }) => {
       const result = await signUp(
         formData.email,
         formData.password,
-        formData.fullName
+        formData.fullName,
       );
 
       if (result.success) {
@@ -85,13 +85,13 @@ const RegisterScreen = ({ navigation }) => {
       } else {
         showError(
           t("error"),
-          result.error || "Erreur lors de la création du compte"
+          result.error || "Erreur lors de la création du compte",
         );
       }
     } catch (error) {
       showError(
         t("error"),
-        "Erreur réseau. Vérifiez votre connexion internet."
+        "Erreur réseau. Vérifiez votre connexion internet.",
       );
     }
   };
@@ -138,33 +138,32 @@ const RegisterScreen = ({ navigation }) => {
           {/* Logo et En-tête */}
           <View style={{ alignItems: "center", marginBottom: 48 }}>
             {/* Logo - Remplacez par votre propre logo */}
-                        <View
-                          style={{
-                            width: 160,
-                            height: 160,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            borderRadius: 80,
-                            backgroundColor:
-                              currentTheme === "dark" ? "#bd9b3f" : "#ffffff", 
-                            shadowColor: "#000",
-                            shadowOpacity: 0.15,
-                            shadowRadius: 8,
-                            shadowOffset: { width: 0, height: 4 },
-                            elevation: 5,
-                          }}
-                        >
-                          <Image
-                            source={require("../../../assets/AdIcon.png")}
-                            style={{
-                              width: 120,
-                              height: 120,
-                              resizeMode: "contain",
-                              tintColor: currentTheme === "dark" ? "#015b44" : undefined,
-                            }}
-                          />
-                        </View>
-
+            <View
+              style={{
+                width: 160,
+                height: 160,
+                justifyContent: "center",
+                alignItems: "center",
+                borderRadius: 80,
+                backgroundColor:
+                  currentTheme === "dark" ? "#bd9b3f" : "#ffffff",
+                shadowColor: "#000",
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 5,
+              }}
+            >
+              <Image
+                source={require("../../../assets/AdIcon.png")}
+                style={{
+                  width: 120,
+                  height: 120,
+                  resizeMode: "contain",
+                  tintColor: currentTheme === "dark" ? "#015b44" : undefined,
+                }}
+              />
+            </View>
 
             <Text
               style={{
@@ -322,32 +321,6 @@ const RegisterScreen = ({ navigation }) => {
                 }}
               >
                 Google
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleFacebookLogin}
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 12,
-                backgroundColor:
-                  currentTheme === "dark" ? "#374151" : "#f3f4f6",
-                borderWidth: 1,
-                borderColor: getBorderColor(),
-                borderRadius: 8,
-              }}
-            >
-              <Facebook size={20} color="#1877F2" style={{ marginRight: 8 }} />
-              <Text
-                style={{
-                  color: getTextColor(),
-                  fontWeight: "500",
-                }}
-              >
-                Facebook
               </Text>
             </TouchableOpacity>
           </View>

@@ -7,7 +7,7 @@ export const ThemeProvider = ({ children }) => {
   const systemColorScheme = useColorScheme();
   const [theme, setTheme] = useState("system");
   const [currentTheme, setCurrentTheme] = useState(
-    systemColorScheme || "light"
+    systemColorScheme || "light",
   );
 
   useEffect(() => {

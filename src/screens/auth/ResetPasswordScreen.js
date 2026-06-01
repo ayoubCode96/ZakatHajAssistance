@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { useAppTranslation } from "../../hooks/useTranslation";
 import { useTheme } from "../../context/ThemeContext";
@@ -91,12 +92,13 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     setLoading(true);
     try {
       // Vérifier s'il y a une session active
-      const { data: session, error: sessionError } = await supabase.auth.getSession();
-      
+      const { data: session, error: sessionError } =
+        await supabase.auth.getSession();
+
       if (!session?.session && !sessionToken) {
-        showError(
+        Alert.alert(
           t("error"),
-          "Session expirée. Veuillez cliquer à nouveau sur le lien d'email."
+          "Session expirée. Veuillez cliquer à nouveau sur le lien d'email.",
         );
         setLoading(false);
         return;
@@ -109,9 +111,9 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       if (error) throw error;
 
       setSuccess(true);
-      showSuccess(
+      Alert.alert(
         t("success"),
-        "Votre mot de passe a été réinitialisé avec succès. Vous allez être redirigé vers la connexion."
+        "Votre mot de passe a été réinitialisé avec succès. Vous allez être redirigé vers la connexion.",
       );
 
       setTimeout(() => {
@@ -122,9 +124,10 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       }, 2000);
     } catch (error) {
       console.error("Erreur reset password:", error);
-      showError(
+      Alert.alert(
         t("error"),
-        error.message || "Erreur lors de la réinitialisation du mot de passe. Vérifiez que le lien n'a pas expiré."
+        error.message ||
+          "Erreur lors de la réinitialisation du mot de passe. Vérifiez que le lien n'a pas expiré.",
       );
     } finally {
       setLoading(false);
@@ -235,14 +238,13 @@ const ResetPasswordScreen = ({ route, navigation }) => {
               <Text
                 style={{
                   fontSize: 12,
-                  color:
-                    currentTheme === "dark" ? "#10b981" : "#047857",
+                  color: currentTheme === "dark" ? "#10b981" : "#047857",
                   lineHeight: 18,
                 }}
               >
-                • Minimum 6 caractères{"\n"}
-                • Les deux mots de passe doivent correspondre{"\n"}
-                • Utilisez des caractères variés pour plus de sécurité
+                • Minimum 6 caractères{"\n"}• Les deux mots de passe doivent
+                correspondre{"\n"}• Utilisez des caractères variés pour plus de
+                sécurité
               </Text>
             </View>
 
@@ -275,9 +277,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             >
               Vous vous souvenez de votre mot de passe ?{" "}
             </Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Login")}
-            >
+            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
               <Text
                 style={{
                   color: secondaryColor,

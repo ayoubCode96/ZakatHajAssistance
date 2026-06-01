@@ -28,7 +28,7 @@ export const CurrencyProvider = ({ children }) => {
       setLoading(true);
 
       const savedCurrency = await AsyncStorage.getItem("userCurrency");
-      const savedCountry  = await AsyncStorage.getItem("userCountry");
+      const savedCountry = await AsyncStorage.getItem("userCountry");
 
       if (savedCurrency && savedCountry) {
         setUserCurrency(savedCurrency);
@@ -42,23 +42,30 @@ export const CurrencyProvider = ({ children }) => {
 
       if (locationResult.success) {
         const { latitude, longitude } = locationResult.location;
-        const countryResult = await locationService.getCountryFromCoords(latitude, longitude);
+        const countryResult = await locationService.getCountryFromCoords(
+          latitude,
+          longitude,
+        );
 
         if (countryResult.success) {
-          const countryCode  = countryResult.countryCode;
-          const countryName  = locationService.getCountryName(countryCode);
-          const currencyResult = locationService.getCurrencyByCountry(countryCode);
-          const currency     = currencyResult.currency;
+          const countryCode = countryResult.countryCode;
+          const countryName = locationService.getCountryName(countryCode);
+          const currencyResult =
+            locationService.getCurrencyByCountry(countryCode);
+          const currency = currencyResult.currency;
 
           const countryInfo = {
-            code:   countryCode,
-            name:   countryName,
-            city:   countryResult.city,
+            code: countryCode,
+            name: countryName,
+            city: countryResult.city,
             region: countryResult.region,
           };
 
           await AsyncStorage.setItem("userCurrency", currency);
-          await AsyncStorage.setItem("userCountry",  JSON.stringify(countryInfo));
+          await AsyncStorage.setItem(
+            "userCountry",
+            JSON.stringify(countryInfo),
+          );
 
           setUserCurrency(currency);
           setUserCountry(countryInfo);
@@ -83,14 +90,14 @@ export const CurrencyProvider = ({ children }) => {
 
       if (result.success) {
         setMetalsPrices({
-          gold:        result.gold,
-          gold24k:     result.gold24k,
-          gold20k:     result.gold20k,
-          gold18k:     result.gold18k,
-          silver:      result.silver,
-          currency:    result.currency,
+          gold: result.gold,
+          gold24k: result.gold24k,
+          gold20k: result.gold20k,
+          gold18k: result.gold18k,
+          silver: result.silver,
+          currency: result.currency,
           lastUpdated: result.lastUpdated,
-          isFallback:  result.isFallback || false,
+          isFallback: result.isFallback || false,
         });
       }
 
