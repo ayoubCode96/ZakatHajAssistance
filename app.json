@@ -17,7 +17,8 @@
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
       "bundleIdentifier": "com.zakati.hajjassistant",
-      "icon": "./assets/IconApp.png"
+      "icon": "./assets/IconApp.png",
+      "associatedDomains": ["applinks:nfddhkvvwslmzzuqkaqg.supabase.co"]
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +27,26 @@
       },
       "edgeToEdgeEnabled": true,
       "userInterfaceStyle": "automatic",
-      "package": "com.zakati.hajjassistant"
+      "package": "com.zakati.hajjassistant",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "zakati",
+              "host": "*",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "exp",
+              "host": "*",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -19,17 +19,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Fonction simple pour obtenir la bonne URL
+// Fonction pour obtenir l'URL de redirection OAuth
+// Utilise le deep link scheme `zakati://` défini dans app.json
 const getRedirectUrl = () => {
   if (Platform.OS === "web") {
     return window.location.origin;
   }
-  return "eexp://sico9gg-ayoubel-8081.exp.direct";
+  // Linking.createURL() génère automatiquement zakati:// (ou exp:// en dev)
+  return Linking.createURL("oauth-callback");
 };
 
 // Fonction pour créer une URL deep link correcte avec Linking
 const createDeepLinkUrl = (path = "") => {
-  // Utiliser Linking.createURL qui respecte le scheme dans app.json
   const url = Linking.createURL(path);
   console.log("Deep link URL créée:", url);
   return url;
@@ -154,17 +155,42 @@ export const authService = {
         provider: "facebook",
         options: {
           redirectTo: redirectUrl,
+          skipBrowserRedirect: Platform.OS !== "web",
         },
       });
 
       if (error) throw error;
 
-      // Ouvre le navigateur seulement pour OAuth, pas pour email
       if (data?.url && Platform.OS !== "web") {
-        await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl,
+        );
+
+        console.log("Facebook OAuth result:", result);
+
+        if (result.type === "success") {
+          const url = new URL(result.url);
+          const params = new URLSearchParams(url.hash.substring(1));
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
+
+          if (access_token) {
+            const { data: sessionData, error: sessionError } =
+              await supabase.auth.setSession({
+                access_token,
+                refresh_token,
+              });
+
+            if (sessionError) throw sessionError;
+            return { success: true, session: sessionData.session };
+          }
+        } else if (result.type === "dismiss") {
+          return { success: false, error: "Authentification annulée" };
+        }
       }
 
-      return { success: true, data };
+      return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }
