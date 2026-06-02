@@ -14,6 +14,8 @@ const InputField = ({
   rightIcon: RightIcon,
   onRightIconPress,
   required = false,
+  unit,
+  compact = false,
   ...props
 }) => {
   const { currentTheme } = useTheme();
@@ -50,15 +52,18 @@ const InputField = ({
     }
   };
 
+  const p = compact ? 10 : 16;
+  const fs = compact ? 14 : 16;
+
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: compact ? 4 : 16 }}>
       {label && (
         <Text
           style={{
             color: getTextColor(),
-            fontSize: 16,
+            fontSize: compact ? 13 : 16,
             fontWeight: "500",
-            marginBottom: 8,
+            marginBottom: compact ? 4 : 8,
             textAlign: "left",
           }}
         >
@@ -78,9 +83,9 @@ const InputField = ({
         }}
       >
         {Icon && (
-          <View style={{ paddingLeft: 16 }}>
+          <View style={{ paddingLeft: p }}>
             <Icon
-              size={20}
+              size={compact ? 16 : 20}
               color={currentTheme === "dark" ? primaryLight : primaryDark}
             />
           </View>
@@ -89,10 +94,10 @@ const InputField = ({
         <TextInput
           style={{
             flex: 1,
-            padding: 16,
-            fontSize: 16,
+            padding: p,
+            fontSize: fs,
             color: getTextColor(),
-            paddingLeft: Icon ? 12 : 16,
+            paddingLeft: Icon ? (compact ? 8 : 12) : p,
             textAlign: "left",
           }}
           value={value}
@@ -117,10 +122,24 @@ const InputField = ({
           {...props}
         />
 
+        {unit && (
+          <View style={{ paddingRight: p }}>
+            <Text
+              style={{
+                fontSize: compact ? 12 : 14,
+                color: currentTheme === "dark" ? "#e0d4a0" : "#6b6b6b",
+                fontWeight: "500",
+              }}
+            >
+              {unit}
+            </Text>
+          </View>
+        )}
+
         {RightIcon && (
           <TouchableOpacity
             onPress={onRightIconPress}
-            style={{ paddingRight: 16 }}
+            style={{ paddingRight: p }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <RightIcon

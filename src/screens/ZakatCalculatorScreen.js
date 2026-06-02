@@ -1702,41 +1702,44 @@ const _doSave = async () => {
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
-                      marginBottom: 16,
+                      marginBottom: 12,
                     }}
                   >
                     {row.map(({ label, field, nisab, bg, color }) => (
                       <View
                         key={field}
-                        style={{ width: "48%", alignItems: "center" }}
+                        style={{ width: "48%" }}
                       >
-                        <View
-                          style={{
-                            width: 38,
-                            height: 38,
-                            borderRadius: 19,
-                            backgroundColor: bg,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            marginBottom: 6,
-                          }}
-                        >
-                          <Package size={18} color={color} />
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+                          <View
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 12,
+                              backgroundColor: bg,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginRight: 6,
+                            }}
+                          >
+                            <Package size={12} color={color} />
+                          </View>
+                          <Text style={{ fontSize: 13, fontWeight: "600", color: th.text() }}>
+                            {label}
+                          </Text>
                         </View>
                         <InputField
-                          label={label}
                           value={formData[field]}
                           onChangeText={(v) => handleInputChange(field, v)}
                           placeholder="0"
                           keyboardType="numeric"
                           unit={t("heads")}
-                          compact
                         />
                         <Text
                           style={{
                             fontSize: 10,
                             color: th.textTer(),
-                            marginTop: 3,
+                            marginTop: -4,
                           }}
                         >
                           Nisab: {nisab}
