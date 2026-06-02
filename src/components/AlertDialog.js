@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform, Animated } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useAppTranslation } from "../hooks/useTranslation";
 import { AlertCircle, CheckCircle, AlertTriangle, Info, X } from 'lucide-react-native';
 
 const MALIKI_PRIMARY = "#1a5d1a";
@@ -9,12 +10,18 @@ const MALIKI_DARK = "#0a2f0a";
 
 const AlertDialog = React.forwardRef((props, ref) => {
   const { currentTheme } = useTheme();
+  let t;
+  try {
+    ({ t } = useAppTranslation());
+  } catch (e) {
+    t = (key) => key;
+  }
   const [visible, setVisible] = React.useState(false);
   const [alertData, setAlertData] = React.useState({
     type: 'info', // 'info', 'success', 'error', 'warning'
     title: '',
     message: '',
-    buttons: [{ text: 'OK', onPress: null, style: 'default' }],
+    buttons: [{ text: t("ok"), onPress: null, style: 'default' }],
   });
   const scaleAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -32,7 +39,7 @@ const AlertDialog = React.forwardRef((props, ref) => {
         type: 'info',
         title,
         message,
-        buttons: buttons || [{ text: 'OK', onPress: () => close() }],
+        buttons: buttons || [{ text: t("ok"), onPress: () => close() }],
       });
     },
     success: (title, message) => {
@@ -40,7 +47,7 @@ const AlertDialog = React.forwardRef((props, ref) => {
         type: 'success',
         title,
         message,
-        buttons: [{ text: 'OK', onPress: () => close() }],
+        buttons: [{ text: t("ok"), onPress: () => close() }],
       });
     },
     error: (title, message) => {
@@ -48,7 +55,7 @@ const AlertDialog = React.forwardRef((props, ref) => {
         type: 'error',
         title,
         message,
-        buttons: [{ text: 'OK', onPress: () => close() }],
+        buttons: [{ text: t("ok"), onPress: () => close() }],
       });
     },
   }));
@@ -187,7 +194,7 @@ const AlertDialog = React.forwardRef((props, ref) => {
                       ]}
                       numberOfLines={1}
                     >
-                      {button.text || 'OK'}
+                      {button.text || t("ok")}
                     </Text>
                   </TouchableOpacity>
                 );

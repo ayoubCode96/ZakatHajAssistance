@@ -1,4 +1,4 @@
-// utils/zakatUtils.js
+﻿// utils/zakatUtils.js
 import { supabase } from "../services/supabase";
 
 // ─── CONSTANTE CANONIQUE MALÉKITE ────────────────────────────────────────────
@@ -9,7 +9,7 @@ export const HAWL_DAYS_MALIKI = 354;
 // ─── CONVERSION GRÉGORIEN → HIJRI ────────────────────────────────────────────
 const _gregorianToHijri = (date) => {
   try {
-    const formatted = new Intl.DateTimeFormat("ar-SA-u-ca-islamic", {
+    const formatted = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", {
       day: "numeric",
       month: "numeric",
       year: "numeric",
@@ -140,7 +140,7 @@ export const checkHawlCompletion = (zakatAnniversaryDate) => {
 export const getCurrentHijriYear = () => {
   try {
     const today = new Date();
-    const formatted = new Intl.DateTimeFormat("ar-SA-u-ca-islamic", {
+    const formatted = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", {
       year: "numeric",
     }).format(today);
     const digits = formatted.replace(/[^\d٠١٢٣٤٥٦٧٨٩]/g, "");
@@ -184,7 +184,7 @@ const _hijriYearFallback = (date) => {
 
 export const getCurrentHijriDate = () => {
   try {
-    return new Intl.DateTimeFormat("ar-SA-u-ca-islamic", {
+    return new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -372,4 +372,37 @@ export const getCurrentNisab = async () => {
     .limit(1);
   if (error) throw error;
   return data?.[0] || null;
+};
+// ─── LOCALE-AWARE DATE FORMATTING ────────────────────────────────────────────
+// Maps app language codes to JS locale strings for toLocaleDateString
+const DATE_LOCALE_MAP = {
+  fr: "fr-FR",
+  en: "en-US",
+  ar: "ar-SA",
+};
+
+/**
+ * Returns the JS locale string for toLocaleDateString based on app language.
+ * @param {string} lang - App language code ("fr", "en", or "ar")
+ * @returns {string} JS locale string (e.g. "fr-FR", "en-US", "ar-SA")
+ */
+export const getDateLocale = (lang = "fr") => {
+  return DATE_LOCALE_MAP[lang] || "fr-FR";
+};
+
+/**
+ * Formats a date using the app's current language locale.
+ * @param {Date|string} date - The date to format
+ * @param {string} lang - App language code
+ * @param {object} options - Intl.DateTimeFormat options
+ * @returns {string} Formatted date string
+ */
+export const formatDate = (date, lang = "fr", options = {}) => {
+  const d = date instanceof Date ? date : new Date(date);
+  const locale = getDateLocale(lang);
+  try {
+    return d.toLocaleDateString(locale, options);
+  } catch {
+    return d.toLocaleDateString("fr-FR", options);
+  }
 };

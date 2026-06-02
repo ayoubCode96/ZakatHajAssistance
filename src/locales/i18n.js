@@ -38,12 +38,16 @@ i18n.use(initReactI18next).init({
 export const changeLanguage = (lng) => {
   i18n.changeLanguage(lng);
   // Changer la direction pour l'arabe (RTL)
+  I18nManager.allowRTL(true);
   if (lng === "ar") {
     I18nManager.forceRTL(true);
   } else {
     I18nManager.forceRTL(false);
   }
 };
+
+// Activer RTL dès le démarrage
+I18nManager.allowRTL(true);
 
 // Fonction pour obtenir la langue actuelle
 export const getCurrentLanguage = () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, Modal,
   Animated, Platform, StatusBar, Dimensions,
@@ -20,7 +20,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAlert } from "../context/AlertContext";
 import { zakatService, getZakatTypeTranslationKey, getAssetTranslationKey } from "../services/zakatService";
 import { supabase } from "../services/supabase";
-import { getCurrentHijriYear } from "../utils/zakatUtils";
+import { getCurrentHijriYear, formatDate } from "../utils/zakatUtils";
 import InputField from "../components/InputField";
 import Button from "../components/Button";
 import ZakatCalculatorScreen from "./ZakatCalculatorScreen";
@@ -88,7 +88,7 @@ const getCategoryColor = (categoryId) => {
 };
 
 const ZakatMainScreen = ({ onSaveSuccess }) => {
-  const { t }                     = useAppTranslation();
+  const { t, currentLanguage, isRTL }    = useAppTranslation();
   const { currentTheme }          = useTheme();
   const { formatCurrency }        = useCurrency();
   const { user }                  = useAuth();
@@ -470,8 +470,8 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
       PAYE:          { bg: isDark ? "#0f2a1a" : COLORS.successBg,  color: isDark ? "#5fd87f" : COLORS.successText, label: t("paid") },
       NON_PAYE:      { bg: isDark ? "#2a0f0f" : COLORS.dangerBg,   color: isDark ? "#f87171" : COLORS.dangerText,  label: t("unpaid") },
       EXEMPTE:       { bg: isDark ? "#1a1a2a" : "#f3f4f6",          color: isDark ? "#9ca3af" : "#6b7280",          label: t("exempt") },
-      EN_COURS_HAWL: { bg: isDark ? "#2a1e00" : COLORS.warningBg,  color: isDark ? "#f5c542" : COLORS.warning,     label: t("hawl_in_progress") || "Hawl en cours" },
-      REMPLACE:      { bg: isDark ? "#1a1a1a" : "#f3f4f6",          color: isDark ? "#6b7280" : "#9ca3af",          label: "Remplacé" },
+      EN_COURS_HAWL: { bg: isDark ? "#2a1e00" : COLORS.warningBg,  color: isDark ? "#f5c542" : COLORS.warning,     label: t("hawl_in_progress") },
+      REMPLACE:      { bg: isDark ? "#1a1a1a" : "#f3f4f6",          color: isDark ? "#6b7280" : "#9ca3af",          label: t("replaced") },
     }[statut] || { bg: isDark ? "#1a1a1a" : "#f3f4f6", color: isDark ? "#9ca3af" : "#6b7280", label: statut };
 
     return (
@@ -537,12 +537,12 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
                   {hawlStatus.completed
                     ? t("hawl_completed")
                     : hawlStatus.message === 'not_started'
-                    ? (t("hawl_not_started") || "Hawl non démarré")
+                    ? (t("hawl_not_started"))
                     : t("hawl_not_completed")}
                 </Text>
                 {hawlStatus.message === 'not_started' && (
                   <Text style={{ color: isDark ? COLORS.darkTextSec : COLORS.lightTextSec, fontSize: 12, marginTop: 3 }}>
-                    {t("hawl_starts_when_nisab_reached") || "Le hawl démarrera quand votre patrimoine atteindra le nisab"}
+                    {t("hawl_starts_when_nisab_reached")}
                   </Text>
                 )}
                 {hawlStatus.message === 'in_progress' && (
@@ -556,14 +556,14 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
                     <Text style={{ color: isDark ? COLORS.darkTextTer : COLORS.lightTextTer, fontSize: 10, marginTop: 3 }}>
                       {hawlStatus.daysElapsed} / 354 {t("days")} · {hawlStatus.progressPercent}%
                       {hawlStatus.nextAnniversary
-                        ? ` · Échéance: ${new Date(hawlStatus.nextAnniversary).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                        ? ` · ${t("due_date_label")}: ${formatDate(hawlStatus.nextAnniversary, currentLanguage, { day: 'numeric', month: 'short', year: 'numeric' })}`
                         : ''}
                     </Text>
                   </>
                 )}
                 {hawlStatus.completed && hawlStatus.dateDebut && (
                   <Text style={{ color: isDark ? "#4daf52" : COLORS.primary, fontSize: 12, marginTop: 2 }}>
-                    Démarré le {new Date(hawlStatus.dateDebut).toLocaleDateString('fr-FR')}
+                    {t("started_on")} {formatDate(hawlStatus.dateDebut, currentLanguage)}
                   </Text>
                 )}
               </View>
@@ -658,34 +658,34 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
 
               <View style={{ backgroundColor: th.card2(), borderRadius: 10, padding: 12, marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <Text style={{ color: th.textTer(), fontSize: 11 }}>Total actifs</Text>
+                  <Text style={{ color: th.textTer(), fontSize: 11 }}>{t("total_assets_label")}</Text>
                   <Text style={{ color: th.text(), fontSize: 12, fontWeight: '600' }}>{formatCurrency(item.montant_total_actifs || 0)}</Text>
                 </View>
                 {(item.montant_total_dettes || 0) > 0 && (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ color: th.textTer(), fontSize: 11 }}>Dettes déductibles</Text>
+                    <Text style={{ color: th.textTer(), fontSize: 11 }}>{t("deductible_debts_label")}</Text>
                     <Text style={{ color: COLORS.danger, fontSize: 12, fontWeight: '600' }}>-{formatCurrency(item.montant_total_dettes || 0)}</Text>
                   </View>
                 )}
                 <View style={{ height: 1, backgroundColor: th.border(), marginBottom: 6 }} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <Text style={{ color: th.textSec(), fontSize: 12, fontWeight: '700' }}>Patrimoine net</Text>
+                  <Text style={{ color: th.textSec(), fontSize: 12, fontWeight: '700' }}>{t("net_wealth_label")}</Text>
                   <Text style={{ color: th.text(), fontSize: 13, fontWeight: '700' }}>{formatCurrency(item.montant_imposable || 0)}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: th.textSec(), fontSize: 12, fontWeight: '700' }}>Zakat (2.5%)</Text>
+                  <Text style={{ color: th.textSec(), fontSize: 12, fontWeight: '700' }}>{t("zakat_rate_label")}</Text>
                   <Text style={{ color: th.primary(), fontWeight: "800", fontSize: 14 }}>{formatCurrency(item.montant_zakat_calcule || 0)}</Text>
                 </View>
                 {item.montant_zakat_paye > 0 && (
                   <>
                     <View style={{ height: 1, backgroundColor: th.border(), marginTop: 6, marginBottom: 6 }} />
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ color: th.textSec(), fontSize: 11 }}>Payé</Text>
+                      <Text style={{ color: th.textSec(), fontSize: 11 }}>{t("paid_label")}</Text>
                       <Text style={{ color: isDark ? "#5fd87f" : COLORS.success, fontWeight: "700", fontSize: 12 }}>{formatCurrency(item.montant_zakat_paye)}</Text>
                     </View>
                     {item.montant_restant > 0 && (
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 3 }}>
-                        <Text style={{ color: th.textSec(), fontSize: 11 }}>Restant</Text>
+                        <Text style={{ color: th.textSec(), fontSize: 11 }}>{t("remaining_label")}</Text>
                         <Text style={{ color: COLORS.warning, fontWeight: "700", fontSize: 12 }}>{formatCurrency(item.montant_restant)}</Text>
                       </View>
                     )}
@@ -710,7 +710,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={{ color: th.textTer(), fontSize: 10, marginTop: 10, textAlign: "right" }}>
+              <Text style={{ color: th.textTer(), fontSize: 10, marginTop: 10, textAlign: isRTL ? "left" : "right" }}>
                 {new Date(item.created_at).toLocaleDateString()}
               </Text>
             </TouchableOpacity>
@@ -772,11 +772,11 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
           </Text>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
             <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>
-              {actifsActifs.length} actif{actifsActifs.length > 1 ? 's' : ''}
+              {t("asset_count", { count: actifsActifs.length })}
             </Text>
             {actifsSupprimés.length > 0 && (
               <Text style={{ color: 'rgba(255,100,100,0.7)', fontSize: 11 }}>
-                · {actifsSupprimés.length} supprimé{actifsSupprimés.length > 1 ? 's' : ''}
+                · {t("deleted_count", { count: actifsSupprimés.length })}
               </Text>
             )}
           </View>
@@ -786,14 +786,14 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
         <View style={{ backgroundColor: th2.card(), borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: th2.border() }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Filter size={15} color={th2.primary()} />
-            <Text style={{ color: th2.text(), fontWeight: '700', fontSize: 13 }}>Filtres</Text>
+            <Text style={{ color: th2.text(), fontWeight: '700', fontSize: 13 }}>{t("filters")}</Text>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
             {[
-              { id: 'all',      label: 'Tous' },
-              { id: 'actif',    label: 'Actifs' },
-              { id: 'supprime', label: 'Supprimés' },
+              { id: 'all',      label: t("all_filter") },
+              { id: 'actif',    label: t("active_filter") },
+              { id: 'supprime', label: t("deleted_filter") },
             ].map(f => {
               const sel = actifFilterStatus === f.id;
               return (
@@ -816,7 +816,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
 
           {availableYears.length > 0 && (
             <View>
-              <Text style={{ color: th2.textSec(), fontSize: 11, marginBottom: 6 }}>Année hijri</Text>
+              <Text style={{ color: th2.textSec(), fontSize: 11, marginBottom: 6 }}>{t("hijri_year")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
@@ -828,7 +828,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
                     }}
                   >
                     <Text style={{ fontSize: 12, fontWeight: actifFilterYear === 'all' ? '700' : '500', color: actifFilterYear === 'all' ? '#fff' : th2.textSec() }}>
-                      Toutes
+                      {t("all_years")}
                     </Text>
                   </TouchableOpacity>
                   {availableYears.map(yr => {
@@ -844,7 +844,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
                         }}
                       >
                         <Text style={{ fontSize: 12, fontWeight: sel ? '700' : '500', color: sel ? '#fff' : th2.textSec() }}>
-                          {yr} H
+                          {t("year_format", { year: yr })}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -866,13 +866,13 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: hawlStatus.completed ? '#16a34a' : '#d97706' }}>
               {hawlStatus.completed
-                ? (t('hawl_completed') || 'Hawl complété — Zakat due')
+                ? (t('hawl_completed'))
                 : hawlStatus.message === 'not_started'
-                ? (t('hawl_not_started') || 'Hawl non démarré')
+                ? (t('hawl_not_started'))
                 : `${t('hawl_not_completed')} — ${hawlStatus.daysRemaining}j restants`}
             </Text>
             <Text style={{ fontSize: 11, color: isDark ? '#9ebf9e' : '#4a6b4a', marginTop: 2 }}>
-              Le hawl se calcule sur l'ensemble du patrimoine
+              {t("hawl_global_info")}
             </Text>
           </View>
         </View>
@@ -883,7 +883,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
         >
           <Plus size={18} color={th2.primary()} />
           <Text style={{ color: th2.primary(), fontWeight: '700', fontSize: 14 }}>
-            {t('add_assets') || 'Ajouter / Modifier des actifs'}
+            {t('add_assets')}
           </Text>
         </TouchableOpacity>
 
@@ -894,7 +894,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
             <Wallet size={48} color={th2.textTer()} />
             <Text style={{ color: th2.textSec(), marginTop: 12, fontSize: 14 }}>
               {actifFilterStatus !== 'all' || actifFilterYear !== 'all'
-                ? 'Aucun actif pour ces filtres'
+                ? t("no_assets_filter")
                 : t('no_assets')}
             </Text>
           </View>
@@ -903,7 +903,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
             {(actifFilterStatus === 'all' || actifFilterStatus === 'actif') && actifsActifs.length > 0 && (
               <>
                 <SectionDivider
-                  label={`ACTIFS (${actifsActifs.length}) · ${formatCurrency(totalValue)}`}
+                  label={t("assets_header", { count: actifsActifs.length, value: formatCurrency(totalValue) })}
                   color={isDark ? '#4daf52' : '#1a5d1a'}
                 />
                 {actifsActifs.map(item => (
@@ -925,7 +925,7 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
 
             {(actifFilterStatus === 'all' || actifFilterStatus === 'supprime') && actifsSupprimés.length > 0 && (
               <>
-                <SectionDivider label={`SUPPRIMÉS (${actifsSupprimés.length})`} color="#ef4444" />
+                <SectionDivider label={t("deleted_header", { count: actifsSupprimés.length })} color="#ef4444" />
                 {actifsSupprimés.map(item => {
                   const TypeIcon = getTypeIcon(item.type_zakat?.nom_type);
                   return (
@@ -947,8 +947,8 @@ const ZakatMainScreen = ({ onSaveSuccess }) => {
                           {formatCurrency(item.valeur_totale)}
                         </Text>
                       </View>
-                      <Text style={{ color: '#ef4444', fontSize: 10, marginTop: 6, textAlign: 'right', opacity: 0.8 }}>
-                        Supprimé le {new Date(item.updated_at || item.created_at).toLocaleDateString('fr-FR')}
+                      <Text style={{ color: '#ef4444', fontSize: 10, marginTop: 6, textAlign: isRTL ? 'left' : 'right', opacity: 0.8 }}>
+                        {t("deleted_on_label")} {formatDate(item.updated_at || item.created_at, currentLanguage)}
                       </Text>
                     </View>
                   );
@@ -997,14 +997,14 @@ const HistoriquePaiementsScreen = () => {
       >
         <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>
           {paiementFilterYear === 'all'
-            ? (t("total_paid") || "Total payé (toutes années)")
-            : `Total payé · ${paiementFilterYear} H`}
+            ? (t("total_paid"))
+            : t("total_paid_label", { year: paiementFilterYear })}
         </Text>
         <Text style={{ color: isDark2 ? '#e8f0e8' : '#fff', fontSize: 30, fontWeight: '800', marginTop: 4 }}>
           {formatCurrency(totalPaye)}
         </Text>
         <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 4 }}>
-          {paiementsHistory.length} paiement{paiementsHistory.length !== 1 ? 's' : ''}
+          {t("payment_count", { count: paiementsHistory.length })}
         </Text>
       </LinearGradient>
  
@@ -1016,7 +1016,7 @@ const HistoriquePaiementsScreen = () => {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <Filter size={15} color={th2.primary()} />
           <Text style={{ color: th2.text(), fontWeight: '700', fontSize: 13 }}>
-            Filtrer par année hijri
+            {t("filter_by_year")}
           </Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -1036,10 +1036,10 @@ const HistoriquePaiementsScreen = () => {
                 fontWeight: paiementFilterYear === 'all' ? '700' : '500',
                 color: paiementFilterYear === 'all' ? '#fff' : th2.textSec(),
               }}>
-                Toutes
+                {t("all_button")}
               </Text>
             </TouchableOpacity>
- 
+
             {/* Années disponibles dans l'historique */}
             {anneesPaiements.length > 0
               ? anneesPaiements.map(yr => {
@@ -1058,7 +1058,7 @@ const HistoriquePaiementsScreen = () => {
                         fontSize: 12, fontWeight: sel ? '700' : '500',
                         color: sel ? '#fff' : th2.textSec(),
                       }}>
-                        {yr} H
+                        {t("year_format", { year: yr })}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1081,7 +1081,7 @@ const HistoriquePaiementsScreen = () => {
                         fontSize: 12, fontWeight: sel ? '700' : '500',
                         color: sel ? '#fff' : th2.textSec(),
                       }}>
-                        {yr} H
+                        {t("year_format", { year: yr })}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1099,7 +1099,7 @@ const HistoriquePaiementsScreen = () => {
           <CreditCard size={48} color={th2.textTer()} />
           <Text style={{ color: th2.textSec(), marginTop: 12, fontSize: 14 }}>
             {paiementFilterYear !== 'all'
-              ? `Aucun paiement pour l'année ${paiementFilterYear} H`
+              ? t("no_payments_year", { year: paiementFilterYear })
               : t("no_payments")}
           </Text>
           {paiementFilterYear !== 'all' && (
@@ -1108,7 +1108,7 @@ const HistoriquePaiementsScreen = () => {
               style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: th2.primary() + '20', borderWidth: 1, borderColor: th2.primary() + '40' }}
             >
               <Text style={{ color: th2.primary(), fontWeight: '600', fontSize: 13 }}>
-                Voir tous les paiements
+                {t("view_all_payments")}
               </Text>
             </TouchableOpacity>
           )}
@@ -1144,7 +1144,7 @@ const HistoriquePaiementsScreen = () => {
                 {formatCurrency(item.montant_paye)}
               </Text>
               <Text style={{ color: th2.textTer(), fontSize: 11, marginTop: 2 }}>
-                {new Date(item.date_paiement).toLocaleDateString('fr-FR')}
+                {formatDate(item.date_paiement, currentLanguage)}
               </Text>
             </View>
           </View>
@@ -1295,8 +1295,8 @@ const HistoriquePaiementsScreen = () => {
             </View>
           </View>
         </View>
-        <Text style={{ color: th.textTer(), fontSize: 10, marginTop: 8, textAlign: 'right' }}>
-          {new Date(item.updated_at || item.created_at).toLocaleDateString('fr-FR')}
+        <Text style={{ color: th.textTer(), fontSize: 10, marginTop: 8, textAlign: isRTL ? 'left' : 'right' }}>
+          {formatDate(item.updated_at || item.created_at, currentLanguage)}
         </Text>
       </View>
     );
@@ -1320,7 +1320,7 @@ const HistoriquePaiementsScreen = () => {
               <View>
                 <Text style={{ color: th.text(), fontSize: 22, fontWeight: "800" }}>{t("year")} {selectedYear.annee_hijri} H</Text>
                 <Text style={{ color: th.textTer(), fontSize: 12, marginTop: 2 }}>
-                  {new Date(selectedYear.created_at).toLocaleDateString('fr-FR')}
+                  {formatDate(selectedYear.created_at, currentLanguage)}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowYearModal(false)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: th.card2(), alignItems: "center", justifyContent: "center" }}>
@@ -1330,38 +1330,38 @@ const HistoriquePaiementsScreen = () => {
 
             <View style={{ backgroundColor: th.card(), borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: th.border() }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ color: th.textSec(), fontSize: 12 }}>Total actifs courants</Text>
+                <Text style={{ color: th.textSec(), fontSize: 12 }}>{t("current_assets_total")}</Text>
                 <Text style={{ color: th.text(), fontSize: 13, fontWeight: '700' }}>{formatCurrency(totalActifs)}</Text>
               </View>
               {totalSupprimés > 0 && (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <Text style={{ color: th.textTer(), fontSize: 11 }}>Actifs supprimés (non comptés)</Text>
+                  <Text style={{ color: th.textTer(), fontSize: 11 }}>{t("deleted_assets_not_counted")}</Text>
                   <Text style={{ color: '#ef4444', fontSize: 11, textDecorationLine: 'line-through' }}>{formatCurrency(totalSupprimés)}</Text>
                 </View>
               )}
               {(selectedYear.montant_total_dettes || 0) > 0 && (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <Text style={{ color: th.textSec(), fontSize: 12 }}>Dettes</Text>
+                  <Text style={{ color: th.textSec(), fontSize: 12 }}>{t("debts")}</Text>
                   <Text style={{ color: COLORS.danger, fontSize: 12, fontWeight: '600' }}>-{formatCurrency(selectedYear.montant_total_dettes)}</Text>
                 </View>
               )}
               <View style={{ height: 1, backgroundColor: th.border(), marginVertical: 6 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ color: th.textSec(), fontSize: 13, fontWeight: '700' }}>Patrimoine net imposable</Text>
+                <Text style={{ color: th.textSec(), fontSize: 13, fontWeight: '700' }}>{t("taxable_net_wealth")}</Text>
                 <Text style={{ color: th.text(), fontSize: 14, fontWeight: '800' }}>{formatCurrency(selectedYear.montant_imposable || 0)}</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ color: th.primary(), fontSize: 13, fontWeight: '700' }}>Zakat calculée (2.5%)</Text>
+                <Text style={{ color: th.primary(), fontSize: 13, fontWeight: '700' }}>{t("zakat_rate_label")}</Text>
                 <Text style={{ color: th.primary(), fontSize: 15, fontWeight: '800' }}>{formatCurrency(selectedYear.montant_zakat_calcule || 0)}</Text>
               </View>
               {(selectedYear.montant_zakat_paye || 0) > 0 && (
                 <>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={{ color: th.textSec(), fontSize: 12 }}>Payé</Text>
+                    <Text style={{ color: th.textSec(), fontSize: 12 }}>{t("paid_label")}</Text>
                     <Text style={{ color: COLORS.success, fontSize: 12, fontWeight: '700' }}>{formatCurrency(selectedYear.montant_zakat_paye)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: th.textSec(), fontSize: 12 }}>Restant</Text>
+                    <Text style={{ color: th.textSec(), fontSize: 12 }}>{t("remaining_label")}</Text>
                     <Text style={{ color: COLORS.warning, fontSize: 12, fontWeight: '700' }}>{formatCurrency(selectedYear.montant_restant || 0)}</Text>
                   </View>
                 </>
@@ -1379,7 +1379,7 @@ const HistoriquePaiementsScreen = () => {
               <ScrollView style={{ flex: 1, marginBottom: 16 }}>
                 {actifsActifs.length > 0 && (
                   <>
-                    <SectionDivider label={`ACTIFS (${actifsActifs.length}) · ${formatCurrency(totalActifs)}`} color={th.primary()} />
+                    <SectionDivider label={t("assets_header", { count: actifsActifs.length, value: formatCurrency(totalActifs) })} color={th.primary()} />
                     {actifsActifs.map((item) => {
                       const TypeIcon = getTypeIcon(item.type_zakat?.nom_type);
                       return (
@@ -1403,7 +1403,7 @@ const HistoriquePaiementsScreen = () => {
 
                 {actifsSupprimés.length > 0 && (
                   <>
-                    <SectionDivider label={`SUPPRIMÉS (${actifsSupprimés.length})`} color="#ef4444" />
+                    <SectionDivider label={t("deleted_header", { count: actifsSupprimés.length })} color="#ef4444" />
                     {actifsSupprimés.map((item) => {
                       const TypeIcon   = getTypeIcon(item.type_zakat?.nom_type);
                       const deletedDate = item.updated_at || item.created_at;
@@ -1420,14 +1420,14 @@ const HistoriquePaiementsScreen = () => {
                             <View style={{ alignItems: "flex-end" }}>
                               <Text style={{ color: "#ef4444", fontWeight: "600", fontSize: 13, textDecorationLine: "line-through" }}>{formatCurrency(item.valeur_totale)}</Text>
                               <View style={{ backgroundColor: isDark ? "#2a0f0f" : "#fee2e2", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginTop: 2 }}>
-                                <Text style={{ color: "#ef4444", fontSize: 9, fontWeight: "700" }}>SUPPRIMÉ</Text>
+                                <Text style={{ color: "#ef4444", fontSize: 9, fontWeight: "700" }}>{t("deleted_badge_label")}</Text>
                               </View>
                             </View>
                           </View>
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
                             <Trash2 size={10} color="#ef4444" />
                             <Text style={{ color: "#ef4444", fontSize: 10, opacity: 0.8 }}>
-                              {new Date(deletedDate).toLocaleDateString('fr-FR')} à {new Date(deletedDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {formatDate(deletedDate, currentLanguage)} {t("at_label")} {new Date(deletedDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </Text>
                           </View>
                         </View>
@@ -1511,7 +1511,7 @@ const HistoriquePaiementsScreen = () => {
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <View>
-                  <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 }}>Paiement Zakat</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("payment_zakat_header")}</Text>
                   <Text style={{ color: isDark ? "#e8f0e8" : "#fff", fontSize: 20, fontWeight: "800", marginTop: 4 }}>{t('year')} {selectedYear.annee_hijri} {t('hijri_year_letter')}</Text>
                 </View>
                 <TouchableOpacity onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" }}>
@@ -1560,7 +1560,7 @@ const HistoriquePaiementsScreen = () => {
                 </View>
 
                 <View>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: textL, marginBottom: 10 }}>Bénéficiaire *</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: textL, marginBottom: 10 }}>{t("beneficiary_required")}</Text>
                   <BeneficiarySelector
                     beneficiaires={beneficiaires} categories={categories}
                     selectedBeneficiary={selectedBenef} onSelect={setSelectedBenef} onClear={() => setSelectedBenef(null)}
@@ -1592,9 +1592,9 @@ const HistoriquePaiementsScreen = () => {
                   <Text style={{ fontSize: 13, fontWeight: "700", color: textL, marginBottom: 10 }}>{t("payment_method")}</Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {[
-                      { id: "transfer", label: "Virement", emoji: "🏦" },
-                      { id: "card",     label: "Carte",    emoji: "💳" },
-                      { id: "cash",     label: "Espèces",  emoji: "💵" },
+                      { id: "transfer", label: t("payment_transfer"), emoji: "🏦" },
+                      { id: "card",     label: t("payment_card"),    emoji: "💳" },
+                      { id: "cash",     label: t("cash_method"),  emoji: "💵" },
                     ].map(m => {
                       const sel = paymentMethod === m.id;
                       return (
@@ -1637,7 +1637,7 @@ const HistoriquePaiementsScreen = () => {
   // RENDER
   // ════════════════════════════════════════════════════════════════
   return (
-    <View style={{ flex: 1, backgroundColor: th.bg() }}>
+    <View style={{ flex: 1, backgroundColor: th.bg(), writingDirection: isRTL ? "rtl" : "ltr" }}>
       <StatusBar backgroundColor={th.bg()} barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Header */}
@@ -1716,7 +1716,7 @@ const HistoriquePaiementsScreen = () => {
                 </View>
                 <View>
                   <Text style={{ color: "#fff", fontWeight: "800", fontSize: 17 }}>{t("zakat_annuel")}</Text>
-                  <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, marginTop: 2 }}>École Malékite</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, marginTop: 2 }}>{t("maliki_school_subtitle")}</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={closeDrawer} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
@@ -1759,7 +1759,7 @@ const HistoriquePaiementsScreen = () => {
             <View style={{ height: 1, backgroundColor: th.border(), marginHorizontal: 20, marginVertical: 14 }} />
             <View style={{ padding: 20, alignItems: "center" }}>
               <Text style={{ color: th.textTer(), fontSize: 12, lineHeight: 18, textAlign: "center", fontStyle: "italic" }}>
-                بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
+                {t("bismillah")}
               </Text>
             </View>
           </ScrollView>

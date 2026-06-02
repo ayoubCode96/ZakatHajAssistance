@@ -15,6 +15,7 @@ import {
   DollarSign,
 } from "lucide-react-native";
 import Button from "./Button";
+import { useAppTranslation } from "../hooks/useTranslation";
 
 const ResultModal = ({
   visible,
@@ -25,6 +26,7 @@ const ResultModal = ({
   theme,
   t,
 }) => {
+  const { isRTL } = useAppTranslation();
   const getBackgroundColor = () => (theme === "dark" ? "#1f2937" : "#ffffff");
 
   const getTextColor = () => (theme === "dark" ? "#ffffff" : "#1f2937");
@@ -47,7 +49,7 @@ const ResultModal = ({
         <View
           style={[
             styles.modalContent,
-            { backgroundColor: getBackgroundColor() },
+            { backgroundColor: getBackgroundColor(), writingDirection: isRTL ? "rtl" : "ltr" },
           ]}
         >
           {/* En-tête du modal */}
@@ -121,7 +123,7 @@ const ResultModal = ({
               ]}
             >
               <Text style={[styles.detailsTitle, { color: getTextColor() }]}>
-                Détails du Calcul
+                {t("calculation_details")}
               </Text>
 
               {calculations.map((item, index) => (
@@ -152,7 +154,7 @@ const ResultModal = ({
               <Text
                 style={[styles.explanationTitle, { color: getTextColor() }]}
               >
-                ��� Explication
+                {t("explanation")}
               </Text>
               <Text
                 style={[
@@ -161,16 +163,8 @@ const ResultModal = ({
                 ]}
               >
                 {results.isZakatDue
-                  ? `Votre patrimoine net (${formatCurrency(
-                      results.netWorth,
-                    )}) dépasse le seuil Nisab (${formatCurrency(
-                      results.nisab,
-                    )}). La Zakat est donc due à hauteur de 2.5% de votre patrimoine net.`
-                  : `Votre patrimoine net (${formatCurrency(
-                      results.netWorth,
-                    )}) ne dépasse pas le seuil Nisab (${formatCurrency(
-                      results.nisab,
-                    )}). La Zakat n'est pas due pour le moment.`}
+                  ? t("zakat_due_explanation", { netWorth: formatCurrency(results.netWorth), nisab: formatCurrency(results.nisab) })
+                  : t("zakat_not_due_explanation", { netWorth: formatCurrency(results.netWorth), nisab: formatCurrency(results.nisab) })}
               </Text>
             </View>
           </ScrollView>
@@ -178,7 +172,7 @@ const ResultModal = ({
           {/* Pied du modal */}
           <View style={styles.modalFooter}>
             <Button
-              title="Fermer"
+              title={t("close")}
               onPress={onClose}
               variant="outline"
               style={styles.closeModalButton}

@@ -18,7 +18,7 @@ import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 
 const RegisterScreen = ({ navigation }) => {
-  const { t } = useAppTranslation();
+  const { t, isRTL } = useAppTranslation();
   const { signUp, signInWithGoogle, signInWithFacebook, loading } = useAuth();
   const { currentTheme } = useTheme();
   const { alert, success, error: showError, confirm } = useAlert();
@@ -81,17 +81,17 @@ const RegisterScreen = ({ navigation }) => {
       );
 
       if (result.success) {
-        success(t("success"), "Compte créé avec succès");
+        success(t("success"), t("account_created"));
       } else {
         showError(
           t("error"),
-          result.error || "Erreur lors de la création du compte",
+          result.error || t("registration_error"),
         );
       }
     } catch (error) {
       showError(
         t("error"),
-        "Erreur réseau. Vérifiez votre connexion internet.",
+        t("network_error"),
       );
     }
   };
@@ -121,7 +121,7 @@ const RegisterScreen = ({ navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: getBackgroundColor() }}
+      style={{ flex: 1, backgroundColor: getBackgroundColor(), writingDirection: isRTL ? "rtl" : "ltr" }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -207,7 +207,7 @@ const RegisterScreen = ({ navigation }) => {
               onChangeText={(value) =>
                 setFormData({ ...formData, email: value })
               }
-              placeholder="votre@email.com"
+              placeholder={t("your_email")}
               keyboardType="email-address"
               autoCapitalize="none"
               error={errors.email}
@@ -221,7 +221,7 @@ const RegisterScreen = ({ navigation }) => {
               onChangeText={(value) =>
                 setFormData({ ...formData, password: value })
               }
-              placeholder="••••••••"
+              placeholder={t("password_placeholder")}
               secureTextEntry={!showPassword}
               error={errors.password}
               icon={Lock}
@@ -236,7 +236,7 @@ const RegisterScreen = ({ navigation }) => {
               onChangeText={(value) =>
                 setFormData({ ...formData, confirmPassword: value })
               }
-              placeholder="••••••••"
+              placeholder={t("password_placeholder")}
               secureTextEntry={!showConfirmPassword}
               error={errors.confirmPassword}
               icon={Lock}
@@ -320,7 +320,7 @@ const RegisterScreen = ({ navigation }) => {
                   fontWeight: "500",
                 }}
               >
-                Google
+                {t("google")}
               </Text>
             </TouchableOpacity>
           </View>

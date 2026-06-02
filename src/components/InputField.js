@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { useAppTranslation } from "../hooks/useTranslation";
 
 const InputField = ({
   label,
@@ -19,6 +20,7 @@ const InputField = ({
   ...props
 }) => {
   const { currentTheme } = useTheme();
+  const { isRTL } = useAppTranslation();
   const [isFocused, setIsFocused] = useState(false);
 
   const handleFocus = () => setIsFocused(true);
@@ -56,7 +58,7 @@ const InputField = ({
   const fs = compact ? 14 : 16;
 
   return (
-    <View style={{ marginBottom: compact ? 4 : 16 }}>
+    <View style={{ marginBottom: compact ? 4 : 16, writingDirection: isRTL ? "rtl" : "ltr" }}>
       {label && (
         <Text
           style={{
@@ -64,7 +66,7 @@ const InputField = ({
             fontSize: compact ? 13 : 16,
             fontWeight: "500",
             marginBottom: compact ? 4 : 8,
-            textAlign: "left",
+            textAlign: isRTL ? "right" : "left",
           }}
         >
           {label}
@@ -98,7 +100,7 @@ const InputField = ({
             fontSize: fs,
             color: getTextColor(),
             paddingLeft: Icon ? (compact ? 8 : 12) : p,
-            textAlign: "left",
+            textAlign: isRTL ? "right" : "left",
           }}
           value={value}
           onChangeText={handleTextChange}
@@ -156,7 +158,7 @@ const InputField = ({
             color: "#ef4444",
             fontSize: 14,
             marginTop: 4,
-            textAlign: "left",
+            textAlign: isRTL ? "right" : "left",
           }}
         >
           {error}

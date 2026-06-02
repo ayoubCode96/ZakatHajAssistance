@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useState,
   useEffect,
   useRef,
@@ -148,7 +148,7 @@ const NISAB_BASES = [
 ];
 
 const ZakatCalculatorScreen = ({ onSaveSuccess }) => {
-  const { t } = useAppTranslation();
+  const { t, currentLanguage, isRTL } = useAppTranslation();
   const { currentTheme } = useTheme();
   const { alert, success, error: showError, confirm } = useAlert();
   const { userCurrency, formatCurrency, refreshData, userCountry } =
@@ -333,7 +333,7 @@ const [pendingHawlInterruptData, setPendingHawlInterruptData] = useState(null);
 
   // ══════════════════════════════════════════════════════════════
   // ✅ FIX CRITIQUE : calculateMalikiZakat
-  //    - Applique la règle min(montantDebut, netWorth) × 2.5%
+  //    - Applique la règle min(montantDebut, netWorth) {t("close_button_char")} 2.5%
   //    - Retourne montantPourZakat (requis par saveZakatAnnuel)
   //    - persistedDebts fallback si formData.debts vide
   // ══════════════════════════════════════════════════════════════
@@ -408,7 +408,7 @@ const prixVache   = prixBetail?.VACHE?.prix_unitaire   ?? 1200;
 const prixChevre  = prixBetail?.CHEVRE?.prix_unitaire  ?? 150;
 const prixMouton  = prixBetail?.MOUTON?.prix_unitaire  ?? 120;
 
-      // Valeur bétail = nombre × prix BDD
+      // Valeur bétail = nombre {t("close_button_char")} prix BDD
       // Incluse SEULEMENT si l'espèce dépasse son nisab
       const livestockValue =
         (chameauxNisabOk ? camels * prixChameau : 0) +
@@ -470,7 +470,7 @@ const prixMouton  = prixBetail?.MOUTON?.prix_unitaire  ?? 120;
       const hawlCompleted = hawlStatus.completed;
       const montantDebutHawl = hawlStatus.montantDebut || 0;
 
-      // ── 11. RÈGLE MALÉKITE : min(début, fin) × 2.5% ───────────
+      // ── 11. RÈGLE MALÉKITE : min(début, fin) {t("close_button_char")} 2.5% ───────────
       let montantPourZakat = netWorth;
       if (isNisabReached && montantDebutHawl > 0) {
         montantPourZakat = Math.min(montantDebutHawl, netWorth);
@@ -625,8 +625,8 @@ const recalculNisabHawl = async (montantImposable) => {
 
         if (hawl.action === "hawl_completed_zakat_due") {
           success(
-            t("hawl_completed") || "Hawl complété",
-            t("zakat_now_obligatory") || "La zakat est maintenant obligatoire",
+            t("hawl_completed"),
+            t("zakat_now_obligatory"),
           );
         }
       }
@@ -724,9 +724,8 @@ const _doSave = async () => {
       if (hawlActif) {
         setSaving(false);
         confirm(
-          t("hawl_interrupt_confirm_title") || "Interrompre le hawl ?",
-          t("hawl_interrupt_confirm_message") ||
-            "Le patrimoine est inférieur au nisab. Confirmer interrompra le hawl en cours. S'agit-il d'une erreur de saisie ?",
+          t("hawl_interrupt_confirm_title"),
+          t("hawl_interrupt_confirm_message"),
           async () => {
             // Confirmé → sauvegarder normalement (saveCompleteCalculation gère l'interruption)
             setSaving(true);
@@ -858,7 +857,7 @@ const _doSave = async () => {
         icon: Clock,
         iconColor: COLORS.gold,
         label:
-          t("nisab_reached_hawl_pending") || "Nisab atteint — Hawl en cours",
+          t("nisab_reached_hawl_pending"),
         labelColor: COLORS.gold,
       };
 
@@ -880,12 +879,13 @@ const _doSave = async () => {
           backgroundColor: th.bg(),
           justifyContent: "center",
           alignItems: "center",
+          writingDirection: isRTL ? "rtl" : "ltr",
         }}
       >
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={{ color: th.textSec(), marginTop: 14, fontSize: 14 }}>
           {loadingPrices
-            ? t("loading_prices") || "Chargement des prix..."
+            ? t("loading_prices")
             : t("loading_data")}
         </Text>
       </View>
@@ -902,7 +902,7 @@ const _doSave = async () => {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: th.bg() }}
+      style={{ flex: 1, backgroundColor: th.bg(), writingDirection: isRTL ? "rtl" : "ltr" }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar
@@ -1019,7 +1019,7 @@ const _doSave = async () => {
                       color: th.primaryColor(),
                     }}
                   >
-                    {getNisabBaseLabel(formData.nisabBase, "fr")}
+                    {getNisabBaseLabel(formData.nisabBase, currentLanguage)}
                   </Text>
                 </View>
               )}
@@ -1067,7 +1067,7 @@ const _doSave = async () => {
             <View style={styles.fixedDetailItem}>
               <Text style={[styles.fixedDetailLabel, { color: th.textSec() }]}>
                 {results?.isNisabReached && !results?.hawlCompleted
-                  ? t("zakat_estimated") || "Zakat estimée"
+                  ? t("zakat_estimated")
                   : t("zakat")}
               </Text>
               <Text
@@ -1140,12 +1140,10 @@ const _doSave = async () => {
               >
                 🕌{" "}
                 {hawlStatus.message === "not_started"
-                  ? t("hawl_starting") ||
-                    "Nisab atteint — Hawl démarré. Zakat due dans 354 jours."
+                  ? t("hawl_starting")
                   : hawlStatus.daysRemaining > 0
-                    ? `${t("hawl_in_progress") || "Hawl en cours"} · ${hawlStatus.daysRemaining} ${t("days") || "jours"} restants`
-                    : t("nisab_reached_hawl_pending") ||
-                      "Nisab atteint — Hawl en cours"}
+                    ? `${t("hawl_in_progress")} · ${hawlStatus.daysRemaining} ${t("days")} ${t("remaining_suffix")}`
+                    : t("nisab_reached_hawl_pending")}
               </Text>
             </View>
           )}
@@ -1438,7 +1436,7 @@ const _doSave = async () => {
                     ]}
                   >
                     <Text style={{ fontSize: 12, color: th.textSec() }}>
-                      {parseFloat(formData.goldWeight).toFixed(2)}g ×{" "}
+                      {parseFloat(formData.goldWeight).toFixed(2)}g {t("close_button_char")}{" "}
                       {formatCurrency(
                         formData.goldPurity === "24k"
                           ? displayPrice24k
@@ -1487,7 +1485,7 @@ const _doSave = async () => {
                     ]}
                   >
                     <Text style={{ fontSize: 12, color: th.textSec() }}>
-                      {parseFloat(formData.silverWeight).toFixed(2)}g ×{" "}
+                      {parseFloat(formData.silverWeight).toFixed(2)}g {t("close_button_char")}{" "}
                       {formatCurrency(displaySilver)}
                     </Text>
                     <Text
@@ -1858,7 +1856,7 @@ const _doSave = async () => {
                       marginLeft: 4,
                     }}
                   >
-                    ℹ️ Dettes enregistrées : {formatCurrency(persistedDebts)}
+                    {t("registered_debts_info", { amount: formatCurrency(persistedDebts) })}
                   </Text>
                 )}
               </View>,
@@ -2234,7 +2232,7 @@ const _doSave = async () => {
                 <Text
                   style={{ color: th.textSec(), fontSize: 18, lineHeight: 20 }}
                 >
-                  ×
+                  {t("close_button_char")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -2307,8 +2305,7 @@ const _doSave = async () => {
                               fontWeight: "600",
                             }}
                           >
-                            {t("zakat_base_maliki") ||
-                              "Base zakat (min début/fin)"}
+                            {t("zakat_base_maliki")}
                           </Text>
                           <Text
                             style={{
@@ -2344,7 +2341,7 @@ const _doSave = async () => {
                           letterSpacing: 0.4,
                         }}
                       >
-                        {t("nisab_details") || "Détail nisab"}
+                        {t("nisab_details")}
                       </Text>
                       <View
                         style={{
@@ -2354,7 +2351,7 @@ const _doSave = async () => {
                         }}
                       >
                         <Text style={{ fontSize: 12, color: th.textSec() }}>
-                          {getNisabBaseLabel(formData.nisabBase, "fr")}
+                          {getNisabBaseLabel(formData.nisabBase, currentLanguage)}
                         </Text>
                         <Text
                           style={{
@@ -2374,7 +2371,7 @@ const _doSave = async () => {
                         }}
                       >
                         <Text style={{ fontSize: 11, color: th.textTer() }}>
-                          {nisabInfo.montantNisab}g ×{" "}
+                          {nisabInfo.montantNisab}g {t("close_button_char")}{" "}
                           {formatCurrency(nisabInfo.prixGramme)}/g
                         </Text>
                         <Text
@@ -2444,7 +2441,7 @@ const _doSave = async () => {
                                 color: th.text(),
                               }}
                             >
-                              {t("hawl_period") || "Période du Hawl"}
+                              {t("hawl_period")}
                             </Text>
                             <Text
                               style={{
@@ -2483,9 +2480,9 @@ const _doSave = async () => {
                           </View>
                           <Text style={{ fontSize: 11, color: th.textSec() }}>
                             {hawlResult.hawlStatus.daysElapsed} / 354{" "}
-                            {t("days") || "jours"}
+                            {t("days")}
                             {" · "}
-                            {t("hawl_deadline") || "Échéance"}:{" "}
+                            {t("hawl_deadline")}:{" "}
                             {hawlResult.hawlStatus.dateEcheance
                               ? new Date(
                                   hawlResult.hawlStatus.dateEcheance,
@@ -2506,7 +2503,7 @@ const _doSave = async () => {
                             }}
                           >
                             ✅{" "}
-                            {t("zakat_now_obligatory") || "Zakat obligatoire"}
+                            {t("zakat_now_obligatory")}
                           </Text>
                           {hawlResult.montantDebut > 0 && (
                             <Text
@@ -2517,7 +2514,7 @@ const _doSave = async () => {
                               }}
                             >
                               min({formatCurrency(hawlResult.montantDebut)},{" "}
-                              {formatCurrency(hawlResult.montantFin)}) × 2.5%
+                              {formatCurrency(hawlResult.montantFin)}) {t("close_button_char")} 2.5%
                             </Text>
                           )}
                         </>
@@ -2581,8 +2578,7 @@ const _doSave = async () => {
                           }}
                         >
                           🕌{" "}
-                          {t("zakat_estimated_when_hawl") ||
-                            "Zakat estimée à l'échéance du hawl"}
+                          {t("zakat_estimated_when_hawl")}
                         </Text>
                         <Text
                           style={{
@@ -2600,8 +2596,7 @@ const _doSave = async () => {
                             marginTop: 4,
                           }}
                         >
-                          {t("hawl_not_completed_yet") ||
-                            "Hawl non encore complété — montant indicatif"}
+                          {t("hawl_not_completed_yet")}
                         </Text>
                       </>
                     )}
@@ -2704,7 +2699,7 @@ const _doSave = async () => {
                 <Text
                   style={{ color: th.textSec(), fontSize: 18, lineHeight: 20 }}
                 >
-                  ×
+                  {t("close_button_char")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -2937,7 +2932,7 @@ const _doSave = async () => {
                     }}
                   >
                     <Text style={{ fontSize: 12, color: th.textSec() }}>
-                      {nisabInfo.montantNisab}g ×{" "}
+                      {nisabInfo.montantNisab}g {t("close_button_char")}{" "}
                       {formatCurrency(nisabInfo.prixGramme)}/g
                     </Text>
                     <Text
@@ -2991,7 +2986,7 @@ const _doSave = async () => {
                   }}
                 >
                   {" "}
-                  (354 {t("days") || "jours"})
+                  (354 {t("days")})
                 </Text>
               </Text>
 
@@ -3021,8 +3016,7 @@ const _doSave = async () => {
                         flex: 1,
                       }}
                     >
-                      {t("hawl_starts_when_nisab_reached") ||
-                        "Le hawl démarre quand le nisab est atteint"}
+                      {t("hawl_starts_when_nisab_reached")}
                     </Text>
                   </View>
                 </View>
@@ -3085,7 +3079,7 @@ const _doSave = async () => {
                             marginTop: 2,
                           }}
                         >
-                          {t("hawl_start_date") || "Début"}:{" "}
+                          {t("hawl_start_date")}:{" "}
                           {new Date(hawlStatus.dateDebut).toLocaleDateString()}
                         </Text>
                       )}
@@ -3098,7 +3092,7 @@ const _doSave = async () => {
                             marginTop: 2,
                           }}
                         >
-                          Patrimoine initial :{" "}
+                          {t("initial_wealth_label")}
                           {formatCurrency(hawlStatus.montantDebut)}
                         </Text>
                       )}
@@ -3147,7 +3141,7 @@ const _doSave = async () => {
                         }}
                       >
                         {hawlStatus.daysElapsed || 0} / 354{" "}
-                        {t("days") || "jours"} · {hawlStatus.progressPercent}%
+                        {t("days")} · {hawlStatus.progressPercent}%
                       </Text>
                     </View>
                   )}

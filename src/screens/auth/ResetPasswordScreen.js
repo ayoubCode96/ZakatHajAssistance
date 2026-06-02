@@ -18,7 +18,7 @@ import { supabase } from "../../services/supabase";
 import * as Linking from "expo-linking";
 
 const ResetPasswordScreen = ({ route, navigation }) => {
-  const { t } = useAppTranslation();
+  const { t, isRTL } = useAppTranslation();
   const { currentTheme } = useTheme();
   const { alert, success: showSuccess, error: showError, confirm } = useAlert();
 
@@ -77,7 +77,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = t("confirm_password") + " requis";
+      newErrors.confirmPassword = t("confirm_password_required");
     } else if (newPassword !== confirmPassword) {
       newErrors.confirmPassword = t("passwords_not_match");
     }
@@ -98,7 +98,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       if (!session?.session && !sessionToken) {
         Alert.alert(
           t("error"),
-          "Session expirée. Veuillez cliquer à nouveau sur le lien d'email.",
+          t("session_expired"),
         );
         setLoading(false);
         return;
@@ -113,7 +113,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       setSuccess(true);
       Alert.alert(
         t("success"),
-        "Votre mot de passe a été réinitialisé avec succès. Vous allez être redirigé vers la connexion.",
+        t("reset_success_redirect"),
       );
 
       setTimeout(() => {
@@ -126,8 +126,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       console.error("Erreur reset password:", error);
       Alert.alert(
         t("error"),
-        error.message ||
-          "Erreur lors de la réinitialisation du mot de passe. Vérifiez que le lien n'a pas expiré.",
+        error.message || t("reset_error_message"),
       );
     } finally {
       setLoading(false);
@@ -137,7 +136,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: getBackgroundColor() }}
+      style={{ flex: 1, backgroundColor: getBackgroundColor(), writingDirection: isRTL ? "rtl" : "ltr" }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -176,7 +175,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 marginTop: 20,
               }}
             >
-              Réinitialiser le mot de passe
+              {t("reset_password_title")}
             </Text>
             <Text
               style={{
@@ -185,7 +184,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 textAlign: "center",
               }}
             >
-              Entrez votre nouveau mot de passe
+              {t("reset_password_subtitle")}
             </Text>
           </View>
 
@@ -198,7 +197,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 setNewPassword(value);
                 setErrors({ ...errors, password: "" });
               }}
-              placeholder="Nouveau mot de passe"
+              placeholder={t("new_password")}
               secureTextEntry={!showPassword}
               error={errors.password}
               icon={Lock}
@@ -214,7 +213,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 setConfirmPassword(value);
                 setErrors({ ...errors, confirmPassword: "" });
               }}
-              placeholder="Confirmez le mot de passe"
+              placeholder={t("confirm_password_label")}
               secureTextEntry={!showConfirmPassword}
               error={errors.confirmPassword}
               icon={Lock}
@@ -242,14 +241,12 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                   lineHeight: 18,
                 }}
               >
-                • Minimum 6 caractères{"\n"}• Les deux mots de passe doivent
-                correspondre{"\n"}• Utilisez des caractères variés pour plus de
-                sécurité
+                {t("password_security_hint")}
               </Text>
             </View>
 
             <Button
-              title={loading ? t("loading") : "Réinitialiser le mot de passe"}
+              title={loading ? t("loading") : t("reset_password_button")}
               onPress={handleResetPassword}
               loading={loading}
               disabled={loading}
@@ -275,7 +272,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                 fontSize: 14,
               }}
             >
-              Vous vous souvenez de votre mot de passe ?{" "}
+              {t("remember_password")}{" "}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate("Login")}>
               <Text
@@ -285,7 +282,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                   fontWeight: "600",
                 }}
               >
-                Se connecter
+                {t("sign_in_link")}
               </Text>
             </TouchableOpacity>
           </View>

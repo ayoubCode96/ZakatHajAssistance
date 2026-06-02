@@ -1,4 +1,4 @@
-
+﻿
 
 import React, { useEffect, useState, useCallback } from "react";
 import {
@@ -22,7 +22,7 @@ import hawlService from "../services/hawlService";
 import { zakatService } from "../services/zakatService";
 import nisabService from "../services/nisabService";
 import {
-  hijriDaysBetween, HAWL_DAYS_MALIKI, getCurrentHijriDate
+  hijriDaysBetween, HAWL_DAYS_MALIKI, getCurrentHijriDate, formatDate
 } from "../utils/zakatUtils";
 
 const COLORS = {
@@ -49,7 +49,7 @@ const COLORS = {
 };
 
 const DashboardScreen = ({ navigation }) => {
-  const { t, currentLanguage, changeLanguage } = useAppTranslation();
+  const { t, currentLanguage, changeLanguage, isRTL } = useAppTranslation();
   const { currentTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { formatCurrency } = useCurrency();
@@ -79,7 +79,7 @@ const DashboardScreen = ({ navigation }) => {
 
   const buildHijriDate = useCallback((lang) => {
     try {
-      const locale = lang === "ar" ? "ar-SA-u-ca-islamic" : "fr-FR-u-ca-islamic";
+      const locale = lang === "ar" ? "ar-SA-u-ca-islamic-umalqura" : "fr-FR-u-ca-islamic-umalqura";
       return new Intl.DateTimeFormat(locale, {
         day: "numeric", month: "long", year: "numeric",
       }).format(new Date());
@@ -196,7 +196,7 @@ const DashboardScreen = ({ navigation }) => {
     const handleLogout = () => {
     confirm(
       t('logout'),
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('logout_confirm_message'),
       async () => {
         await signOut();
       }
@@ -238,11 +238,11 @@ const DashboardScreen = ({ navigation }) => {
     const pctText   = hasChange ? `${change >= 0 ? "+" : ""}${Number(change).toFixed(2)}%` : null;
     return (
       <View style={[styles.metalChip, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)" }]}>
-        <Text style={styles.metalChipLabel}>{label}</Text>
-        <Text style={styles.metalChipVal}>{value}</Text>
+        <Text style={styles.metalChipLabel} numberOfLines={1}>{label}</Text>
+        <Text style={styles.metalChipVal} numberOfLines={1} ellipsizeMode="tail">{value}</Text>
         {pctText
-          ? <Text style={[styles.metalChipChg, { color: change >= 0 ? "#86efac" : "#fca5a5" }]}>{pctText}</Text>
-          : <Text style={[styles.metalChipChg, { color: "rgba(255,255,255,0.3)" }]}>—</Text>}
+          ? <Text style={[styles.metalChipChg, { color: change >= 0 ? "#86efac" : "#fca5a5" }]} numberOfLines={1}>{pctText}</Text>
+          : <Text style={[styles.metalChipChg, { color: "rgba(255,255,255,0.3)" }]} numberOfLines={1}>—</Text>}
       </View>
     );
   };
@@ -285,7 +285,7 @@ const DashboardScreen = ({ navigation }) => {
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: th.bg() }]}
+      style={[styles.container, { backgroundColor: th.bg(), writingDirection: isRTL ? "rtl" : "ltr" }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
     >
@@ -299,8 +299,8 @@ const DashboardScreen = ({ navigation }) => {
               </Text>
             </View>
             <View>
-              <Text style={styles.userName}>{user?.name || t("user") || "Utilisateur"}</Text>
-              <Text style={styles.userSub}>{user?.ville || user?.pays || "Maroc"}</Text>
+              <Text style={styles.userName}>{user?.name || t("user")}</Text>
+              <Text style={styles.userSub}>{user?.ville || user?.pays || t("morocco")}</Text>
             </View>
           </View>
           <View style={styles.topbarActions}>
@@ -313,24 +313,16 @@ const DashboardScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={[
-          styles.hijriStrip,
-          currentLanguage !== "ar"
-            ? { flexDirection: "row", gap: 10 }
-            : { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-        ]}>
-          <View>
-            <Text style={styles.hijriLbl}>{t("today") || "Aujourd'hui"}</Text>
-            <Text style={[
-              styles.hijriVal,
-              currentLanguage === "ar" ? { textAlign: "right", writingDirection: "rtl" } : {},
-            ]}>
+        <View style={[styles.hijriStrip, { flexDirection: "row" }]}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={styles.hijriLbl}>{t("today")}</Text>
+            <Text style={[styles.hijriVal, isRTL ? { textAlign: "right", writingDirection: "rtl" } : {}]}>
               {hijriDate || "—"}
             </Text>
           </View>
           <View style={styles.metalRow}>
-            <MetalChip label="Or 24k" value={orPrice24k} change={metalVariations.or} />
-            <MetalChip label="Argent" value={argPrice}   change={metalVariations.argent} />
+            <MetalChip label={t("gold_24k_label")} value={orPrice24k} change={metalVariations.or} />
+            <MetalChip label={t("silver_label")} value={argPrice}   change={metalVariations.argent} />
           </View>
         </View>
       </View>
@@ -340,12 +332,12 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.hawlTop}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.hawlTitle, { color: th.textSec() }]}>
-              {t("net_wealth_hawl") || "Patrimoine net · Hawl"}
+              {t("net_wealth_hawl")}
             </Text>
             {/* ✅ FIX : afficher patrimoineActuel, pas montantDebut */}
             <Text style={[styles.hawlAmount, { color: th.text() }]}>{patrimoineDisplay}</Text>
             <Text style={[styles.hawlCur, { color: th.textTer() }]}>
-              {t("imposable") || "Imposable actuel"}
+              {t("imposable")}
             </Text>
           </View>
           {/* ✅ FIX : badge statut hawl correct */}
@@ -366,10 +358,10 @@ const DashboardScreen = ({ navigation }) => {
                 : (isDark ? "#9ca3af" : "#6b7280") }
             ]}>
               {hawlStatus?.statut === "COMPLETE"
-                ? (t("hawl_completed") || "Hawl complété ✓")
+                ? (t("hawl_completed"))
                 : hawlStatus?.statut === "EN_COURS"
-                ? (t("hawl_in_progress") || "Hawl en cours")
-                : (t("hawl_not_started") || "Non démarré")}
+                ? (t("hawl_in_progress"))
+                : (t("hawl_not_started"))}
             </Text>
           </View>
         </View>
@@ -381,13 +373,13 @@ const DashboardScreen = ({ navigation }) => {
               <View style={styles.progressDot}>
                 <View style={[styles.dot, { backgroundColor: COLORS.primaryMid }]} />
                 <Text style={[styles.progressMetaTxt, { color: th.textSec() }]}>
-                  {hawlStatus.dateDebut ? new Date(hawlStatus.dateDebut).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                  {hawlStatus.dateDebut ? formatDate(hawlStatus.dateDebut, currentLanguage, { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                 </Text>
               </View>
               <Text style={[styles.progressPctTxt, { color: th.primary() }]}>{pct}%</Text>
               <View style={styles.progressDot}>
                 <Text style={[styles.progressMetaTxt, { color: th.textSec() }]}>
-                  {hawlStatus.dateEcheance ? new Date(hawlStatus.dateEcheance).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                  {hawlStatus.dateEcheance ? formatDate(hawlStatus.dateEcheance, currentLanguage, { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                 </Text>
                 <View style={[styles.dot, { backgroundColor: COLORS.gold }]} />
               </View>
@@ -396,8 +388,8 @@ const DashboardScreen = ({ navigation }) => {
               <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: COLORS.primaryLight }]} />
             </View>
             {restants != null && (
-              <Text style={[styles.progressRemaining, { color: th.primary() }]}>
-                {restants} {t("days_remaining") || "jours restants"}
+              <Text style={[styles.progressRemaining, { color: th.primary(), textAlign: isRTL ? "left" : "right" }]}>
+                {restants} {t("days_remaining")}
               </Text>
             )}
           </View>
@@ -408,7 +400,7 @@ const DashboardScreen = ({ navigation }) => {
           >
             <Plus size={14} color={th.primary()} strokeWidth={2} />
             <Text style={[styles.startHawlTxt, { color: th.primary() }]}>
-              {t("start_hawl") || "Calculer ma zakat pour démarrer le hawl"}
+              {t("start_hawl")}
             </Text>
           </TouchableOpacity>
         )}
@@ -419,11 +411,11 @@ const DashboardScreen = ({ navigation }) => {
         <View style={[styles.zakatBanner, { backgroundColor: COLORS.primary }]}>
           <View>
             <Text style={styles.zakatBannerLbl}>
-              {t("zakat_due_label") || "Zakat à payer"}
+              {t("zakat_due_label")}
             </Text>
             <Text style={styles.zakatBannerAmt}>{zakatDue}</Text>
             <Text style={styles.zakatBannerSub}>
-              Année {zakatCourante?.annee_hijri} H · {t("maliki_rule") || "Règle Malékite"}
+              {t("year_format", { year: zakatCourante?.annee_hijri })} · {t("maliki_rule")}
             </Text>
           </View>
           <TouchableOpacity
@@ -431,7 +423,7 @@ const DashboardScreen = ({ navigation }) => {
             onPress={() => navigation.navigate("Zakat")}
             activeOpacity={0.85}
           >
-            <Text style={styles.payBtnTxt}>{t("pay") || "Payer"} ↗</Text>
+            <Text style={styles.payBtnTxt}>{t("pay")} ↗</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -445,11 +437,11 @@ const DashboardScreen = ({ navigation }) => {
           <Clock size={16} color={COLORS.warning} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.hawlBannerTxt, { color: COLORS.warning }]}>
-              {t("hawl_in_progress") || "Hawl en cours"}
-              {hawlStatus.daysRemaining > 0 ? ` · ${hawlStatus.daysRemaining} jours restants` : ''}
+              {t("hawl_in_progress")}
+              {hawlStatus.daysRemaining > 0 ? ` · ${t("remaining_days", { count: hawlStatus.daysRemaining })}` : ''}
             </Text>
             <Text style={[styles.hawlBannerSub, { color: isDark ? "#9ca3af" : "#92400e" }]}>
-              Nisab atteint — Zakat due à l'échéance du hawl
+              {t("nisab_reached_hawl_due")}
             </Text>
           </View>
         </View>
@@ -458,7 +450,7 @@ const DashboardScreen = ({ navigation }) => {
       {/* ── Stats ──────────────────────────────────────────────── */}
       <View style={styles.sectionHead}>
         <Text style={[styles.sectionH, { color: th.text() }]}>
-          {t("summary") || "Synthèse"}
+          {t("summary")}
         </Text>
       </View>
       <View style={styles.statsGrid}>
@@ -469,8 +461,8 @@ const DashboardScreen = ({ navigation }) => {
           value={zakatCourante?.montant_total_actifs
             ? formatCurrency(zakatCourante.montant_total_actifs)
             : "—"}
-          label={t("total_assets") || "Total actifs"}
-          sub={t("before_debts") || "Avant dettes"}
+          label={t("total_assets")}
+          sub={t("before_debts")}
         />
         <StatBox
           icon={Shield}
@@ -479,7 +471,7 @@ const DashboardScreen = ({ navigation }) => {
           value={nisabData?.threshold
             ? formatCurrency(nisabData.threshold)
             : "—"}
-          label={t("nisab_threshold") || "Seuil nisab"}
+          label={t("nisab_threshold")}
           sub={nisabData?.label || hawlStatus?.nisabBase || "or_24k"}
         />
         <StatBox
@@ -487,13 +479,13 @@ const DashboardScreen = ({ navigation }) => {
           iconBg={isDark ? "#1a1a2a" : "#eff6ff"}
           iconColor="#2563eb"
           value={zakatCourante?.annee_hijri || getCurrentHijriDate()?.split(" ").pop() || "—"}
-          label={t("hijri_year") || "Année hijri"}
+          label={t("hijri_year")}
           // ✅ FIX : afficher statut lisible
           sub={
-            zakatCourante?.statut === 'NON_PAYE'      ? '⚠️ Non payée' :
-            zakatCourante?.statut === 'PAYE'           ? '✅ Payée' :
-            zakatCourante?.statut === 'EN_COURS_HAWL'  ? '🕌 Hawl en cours' :
-            zakatCourante?.statut === 'EXEMPTE'        ? 'Exempté' :
+            zakatCourante?.statut === 'NON_PAYE'      ? t("zakat_not_paid_status") :
+            zakatCourante?.statut === 'PAYE'           ? t("zakat_paid_status") :
+            zakatCourante?.statut === 'EN_COURS_HAWL'  ? t("hawl_in_progress_status") :
+            zakatCourante?.statut === 'EXEMPTE'        ? t("exempt_status") :
             '—'
           }
         />
@@ -504,15 +496,15 @@ const DashboardScreen = ({ navigation }) => {
           value={zakatCourante?.montant_total_dettes
             ? formatCurrency(zakatCourante.montant_total_dettes)
             : "0"}
-          label={t("deductible_debts") || "Dettes déductibles"}
-          sub={t("declared") || "Déclarées"}
+          label={t("deductible_debts")}
+          sub={t("declared")}
         />
       </View>
 
       {/* ── Actions rapides ──────────────────────────────────────── */}
       <View style={styles.sectionHead}>
         <Text style={[styles.sectionH, { color: th.text() }]}>
-          {t("quick_actions") || "Actions rapides"}
+          {t("quick_actions")}
         </Text>
       </View>
       <View style={styles.quickGrid}>
@@ -520,32 +512,32 @@ const DashboardScreen = ({ navigation }) => {
           icon={Calculator}
           iconBg={isDark ? "#0d2e0d" : "#ecfdf5"}
           iconColor="#059669"
-          label={t("zakat_calculator") || "Calculateur Zakat"}
-          desc={t("maliki_rules") || "Règles Malékites"}
+          label={t("zakat_calculator")}
+          desc={t("maliki_rules")}
           onPress={() => navigation.navigate("Zakat")}
         />
         <QuickAction
           icon={Map}
           iconBg={isDark ? "#0d2a2a" : "#f0fdfa"}
           iconColor="#0d9488"
-          label={t("hajj_assistant") || "Assistant Hajj"}
-          desc={t("hajj_guide") || "Guide complet"}
+          label={t("hajj_assistant")}
+          desc={t("hajj_guide")}
           onPress={() => navigation.navigate("Hajj")}
         />
         <QuickAction
           icon={User}
           iconBg={isDark ? "#1a0d2a" : "#faf5ff"}
           iconColor="#7c3aed"
-          label={t("profile") || "Mon profil"}
-          desc={t("nisab_hawl_currency") || "Nisab, hawl, devise"}
+          label={t("profile")}
+          desc={t("nisab_hawl_currency")}
           onPress={() => navigation.navigate("Profil")}
         />
         <QuickAction
           icon={Settings}
           iconBg={isDark ? "#2a1500" : "#fffbeb"}
           iconColor="#d97706"
-          label={t("settings") || "Paramètres"}
-          desc={t("app_settings") || "App & préférences"}
+          label={t("settings")}
+          desc={t("app_settings")}
           onPress={() => navigation.navigate("Paramètres")}
         />
       </View>
@@ -569,11 +561,11 @@ const styles = StyleSheet.create({
   topbarActions:    { flexDirection: "row", gap: 8, alignItems: "center" },
   iconBtn:          { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.12)", justifyContent: "center", alignItems: "center" },
   langTxt:          { fontSize: 11, fontWeight: "500", color: "#fff" },
-  hijriStrip:       { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 10, padding: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  hijriStrip:       { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 10, padding: 12, alignItems: "center" },
   hijriLbl:         { fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 2 },
   hijriVal:         { fontSize: 14, fontWeight: "500", color: "#fff" },
   metalRow:         { flexDirection: "row", gap: 8 },
-  metalChip:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center" },
+  metalChip:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", overflow: "hidden", maxWidth: 140 },
   metalChipLabel:   { fontSize: 9, color: "rgba(255,255,255,0.55)", marginBottom: 1 },
   metalChipVal:     { fontSize: 11, fontWeight: "500", color: "#fff" },
   metalChipChg:     { fontSize: 9, marginTop: 1 },
@@ -592,7 +584,7 @@ const styles = StyleSheet.create({
   progressPctTxt:   { fontSize: 12, fontWeight: "500" },
   progressBg:       { height: 6, borderRadius: 3 },
   progressFill:     { height: 6, borderRadius: 3 },
-  progressRemaining:{ fontSize: 11, textAlign: "right", marginTop: 2 },
+    progressRemaining:{ fontSize: 11, marginTop: 2 },
   startHawlBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingVertical: 10, marginTop: 4 },
   startHawlTxt:     { fontSize: 13, fontWeight: "500" },
   zakatBanner:      { marginHorizontal: 16, borderRadius: 14, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

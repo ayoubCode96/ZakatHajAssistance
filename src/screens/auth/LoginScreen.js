@@ -79,12 +79,12 @@ const LoginScreen = ({ navigation }) => {
       const result = await signIn(formData.email, formData.password);
 
       if (!result.success) {
-        showError(t("error"), result.error || "Erreur de connexion");
+        showError(t("error"), result.error || t("connection_error"));
       }
     } catch (error) {
       showError(
         t("error"),
-        "Erreur réseau. Vérifiez votre connexion internet.",
+        t("network_error"),
       );
     }
   };
@@ -139,7 +139,7 @@ const LoginScreen = ({ navigation }) => {
 
       success(
         t("success"),
-        `Un code de vérification a été envoyé à ${forgotPasswordEmail}`,
+        t("verification_code_sent", { email: forgotPasswordEmail }),
       );
 
       setForgotPasswordStep(2);
@@ -149,7 +149,7 @@ const LoginScreen = ({ navigation }) => {
       showError(
         t("error"),
         error.message ||
-          "Erreur lors de l'envoi du code. Vérifiez votre email.",
+          t("send_code_error"),
       );
     } finally {
       setForgotPasswordLoading(false);
@@ -160,7 +160,7 @@ const LoginScreen = ({ navigation }) => {
     const newErrors = {};
 
     if (!forgotPasswordCode.trim()) {
-      newErrors.code = "Le code de vérification est requis";
+      newErrors.code = t("verification_code_required");
     }
 
     setForgotPasswordErrors(newErrors);
@@ -175,7 +175,7 @@ const LoginScreen = ({ navigation }) => {
       );
 
       if (!result.success) {
-        showError(t("error"), result.error || "Code invalide ou expiré");
+        showError(t("error"), result.error || t("invalid_code"));
         setForgotPasswordLoading(false);
         return;
       }
@@ -184,7 +184,7 @@ const LoginScreen = ({ navigation }) => {
       setForgotPasswordStep(3);
       setForgotPasswordErrors({});
     } catch (error) {
-      showError(t("error"), "Erreur lors de la vérification du code");
+      showError(t("error"), t("verify_code_error"));
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -200,7 +200,7 @@ const LoginScreen = ({ navigation }) => {
     }
 
     if (!confirmNewPassword) {
-      newErrors.confirmPassword = t("confirm_password") + " requis";
+      newErrors.confirmPassword = t("confirm_password_required");
     } else if (newPassword !== confirmNewPassword) {
       newErrors.confirmPassword = t("passwords_not_match");
     }
@@ -224,7 +224,7 @@ const LoginScreen = ({ navigation }) => {
 
       success(
         t("success"),
-        "Votre mot de passe a été réinitialisé avec succès!",
+        t("password_reset_success"),
       );
 
       // Réinitialiser le modal
@@ -239,7 +239,7 @@ const LoginScreen = ({ navigation }) => {
     } catch (error) {
       showError(
         t("error"),
-        error.message || "Erreur lors de la réinitialisation du mot de passe",
+        error.message || t("password_reset_error"),
       );
     } finally {
       setForgotPasswordLoading(false);
@@ -273,7 +273,7 @@ const LoginScreen = ({ navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: getBackgroundColor() }}
+      style={{ flex: 1, backgroundColor: getBackgroundColor(), writingDirection: isRTL ? "rtl" : "ltr" }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -347,7 +347,7 @@ const LoginScreen = ({ navigation }) => {
               onChangeText={(value) =>
                 setFormData({ ...formData, email: value })
               }
-              placeholder="votre email@email.com"
+              placeholder={t("your_email")}
               keyboardType="email-address"
               autoCapitalize="none"
               error={errors.email}
@@ -361,7 +361,7 @@ const LoginScreen = ({ navigation }) => {
               onChangeText={(value) =>
                 setFormData({ ...formData, password: value })
               }
-              placeholder="••••••••"
+              placeholder={t("password_placeholder")}
               secureTextEntry={!showPassword}
               error={errors.password}
               icon={Lock}
@@ -460,7 +460,7 @@ const LoginScreen = ({ navigation }) => {
                   fontWeight: "500",
                 }}
               >
-                Google
+                {t("google")}
               </Text>
             </TouchableOpacity>
 
@@ -555,7 +555,7 @@ const LoginScreen = ({ navigation }) => {
             {forgotPasswordStep === 1 && (
               <>
                 <Text style={[styles.modalTitle, { color: getTextColor() }]}>
-                  Réinitialiser le mot de passe
+                  {t("reset_password_modal")}
                 </Text>
 
                 <Text
@@ -566,8 +566,7 @@ const LoginScreen = ({ navigation }) => {
                     },
                   ]}
                 >
-                  Entrez votre adresse email pour recevoir un code de
-                  vérification.
+                  {t("reset_password_desc")}
                 </Text>
 
                 <View style={{ marginBottom: 20 }}>
@@ -578,7 +577,7 @@ const LoginScreen = ({ navigation }) => {
                       setForgotPasswordEmail(value);
                       setForgotPasswordErrors({});
                     }}
-                    placeholder="votre@email.com"
+                    placeholder={t("your_email")}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     error={forgotPasswordErrors.email}
@@ -589,7 +588,7 @@ const LoginScreen = ({ navigation }) => {
                 <View style={{ gap: 12 }}>
                   <Button
                     title={
-                      forgotPasswordLoading ? t("loading") : "Envoyer le code"
+                      forgotPasswordLoading ? t("loading") : t("send_code")
                     }
                     onPress={handleSendCode}
                     loading={forgotPasswordLoading}
@@ -600,7 +599,7 @@ const LoginScreen = ({ navigation }) => {
                     }
                   />
                   <Button
-                    title="Annuler"
+                    title={t("cancel")}
                     onPress={closeForgotPasswordModal}
                     size="large"
                     backgroundColor={
@@ -616,7 +615,7 @@ const LoginScreen = ({ navigation }) => {
             {forgotPasswordStep === 2 && (
               <>
                 <Text style={[styles.modalTitle, { color: getTextColor() }]}>
-                  Vérifier le code
+                  {t("verify_code")}
                 </Text>
 
                 <Text
@@ -627,18 +626,18 @@ const LoginScreen = ({ navigation }) => {
                     },
                   ]}
                 >
-                  Un code de vérification a été envoyé à {forgotPasswordEmail}
+                  {t("verification_code_sent", { email: forgotPasswordEmail })}
                 </Text>
 
                 <View style={{ marginBottom: 20 }}>
                   <InputField
-                    label="Code de vérification"
+                    label={t("verification_code")}
                     value={forgotPasswordCode}
                     onChangeText={(value) => {
                       setForgotPasswordCode(value);
                       setForgotPasswordErrors({});
                     }}
-                    placeholder="000000"
+                    placeholder={t("code_placeholder")}
                     keyboardType="number-pad"
                     maxLength={6}
                     error={forgotPasswordErrors.code}
@@ -648,7 +647,7 @@ const LoginScreen = ({ navigation }) => {
                 <View style={{ gap: 12 }}>
                   <Button
                     title={
-                      forgotPasswordLoading ? t("loading") : "Vérifier le code"
+                      forgotPasswordLoading ? t("loading") : t("verify_code")
                     }
                     onPress={handleVerifyCode}
                     loading={forgotPasswordLoading}
@@ -659,7 +658,7 @@ const LoginScreen = ({ navigation }) => {
                     }
                   />
                   <Button
-                    title="Retour"
+                    title={t("back")}
                     onPress={() => {
                       setForgotPasswordStep(1);
                       setForgotPasswordCode("");
@@ -679,7 +678,7 @@ const LoginScreen = ({ navigation }) => {
             {forgotPasswordStep === 3 && (
               <>
                 <Text style={[styles.modalTitle, { color: getTextColor() }]}>
-                  Nouveau mot de passe
+                  {t("new_password")}
                 </Text>
 
                 <Text
@@ -690,7 +689,7 @@ const LoginScreen = ({ navigation }) => {
                     },
                   ]}
                 >
-                  Entrez votre nouveau mot de passe
+                  {t("enter_new_password")}
                 </Text>
 
                 <View style={{ marginBottom: 20 }}>
@@ -701,7 +700,7 @@ const LoginScreen = ({ navigation }) => {
                       setNewPassword(value);
                       setForgotPasswordErrors({});
                     }}
-                    placeholder="Nouveau mot de passe"
+                    placeholder={t("new_password")}
                     secureTextEntry={!showNewPassword}
                     error={forgotPasswordErrors.password}
                     icon={Lock}
@@ -718,7 +717,7 @@ const LoginScreen = ({ navigation }) => {
                       setConfirmNewPassword(value);
                       setForgotPasswordErrors({});
                     }}
-                    placeholder="Confirmer le mot de passe"
+                    placeholder={t("confirm_password")}
                     secureTextEntry={!showConfirmPassword}
                     error={forgotPasswordErrors.confirmPassword}
                     icon={Lock}
@@ -734,7 +733,7 @@ const LoginScreen = ({ navigation }) => {
                     title={
                       forgotPasswordLoading
                         ? t("loading")
-                        : "Réinitialiser le mot de passe"
+                        : t("reset_password_button")
                     }
                     onPress={handleUpdatePassword}
                     loading={forgotPasswordLoading}
@@ -745,7 +744,7 @@ const LoginScreen = ({ navigation }) => {
                     }
                   />
                   <Button
-                    title="Annuler"
+                    title={t("cancel")}
                     onPress={closeForgotPasswordModal}
                     size="large"
                     backgroundColor={

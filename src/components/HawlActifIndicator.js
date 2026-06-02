@@ -1,4 +1,4 @@
-// components/HawlActifIndicator.js
+﻿// components/HawlActifIndicator.js
 // ═══════════════════════════════════════════════════════════════════
 // Indicateur hawl pour UN actif individuel
 // Affiche : barre de progression, jours restants, date échéance
@@ -10,6 +10,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { Clock, CheckCircle, AlertCircle } from "lucide-react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppTranslation } from "../hooks/useTranslation";
+import { formatDate } from "../utils/zakatUtils";
 
 const COLORS = {
   primary: "#1a5d1a",
@@ -47,7 +48,7 @@ const HawlActifIndicator = ({
   showDate = false,
 }) => {
   const { currentTheme } = useTheme();
-  const { t } = useAppTranslation();
+  const { t, currentLanguage, isRTL } = useAppTranslation();
   const isDark = currentTheme === "dark";
 
   const th = {
@@ -93,7 +94,7 @@ const HawlActifIndicator = ({
       <View
         style={[
           styles.compactContainer,
-          { backgroundColor: bgColor, borderColor: color + "40" },
+          { backgroundColor: bgColor, borderColor: color + "40", writingDirection: isRTL ? "rtl" : "ltr" },
         ]}
       >
         {/* Icône + label */}
@@ -105,8 +106,8 @@ const HawlActifIndicator = ({
           )}
           <Text style={[styles.compactLabel, { color }]}>
             {complete
-              ? t("hawl_complete") || "Hawl complété ✓"
-              : `${joursRestants}j ${t("remaining") || "restants"}`}
+              ? t("hawl_complete")
+              : `${joursRestants}j ${t("remaining")}`}
           </Text>
           <Text style={[styles.compactPercent, { color: color + "cc" }]}>
             {progressPercent}%
@@ -133,11 +134,11 @@ const HawlActifIndicator = ({
 
         {/* Jours écoulés / total */}
         <Text style={[styles.compactSub, { color: th.textTer() }]}>
-          {joursEcoules} / {HAWL_DAYS} {t("days") || "jours"}
+          {joursEcoules} / {HAWL_DAYS} {t("days")}
           {showDate &&
             dateEcheance &&
             !complete &&
-            ` · ${t("hawl_deadline") || "Échéance"}: ${dateEcheance.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}`}
+            ` · ${t("hawl_deadline")}: ${formatDate(dateEcheance, currentLanguage, { day: "numeric", month: "short", year: "numeric" })}`}
         </Text>
       </View>
     );
@@ -148,7 +149,7 @@ const HawlActifIndicator = ({
     <View
       style={[
         styles.fullContainer,
-        { backgroundColor: bgColor, borderColor: color },
+        { backgroundColor: bgColor, borderColor: color, writingDirection: isRTL ? "rtl" : "ltr" },
       ]}
     >
       {/* En-tête */}
@@ -162,8 +163,8 @@ const HawlActifIndicator = ({
         )}
         <Text style={[styles.fullTitle, { color }]}>
           {complete
-            ? t("hawl_complete") || "Hawl complété"
-            : t("hawl_in_progress") || "Hawl en cours"}
+            ? t("hawl_complete")
+            : t("hawl_in_progress")}
         </Text>
         <View style={[styles.badge, { backgroundColor: color + "20" }]}>
           <Text style={[styles.badgeText, { color }]}>{progressPercent}%</Text>
@@ -192,7 +193,7 @@ const HawlActifIndicator = ({
       <View style={styles.detailsRow}>
         <View style={styles.detailBlock}>
           <Text style={[styles.detailLabel, { color: th.textSec() }]}>
-            {t("days_elapsed") || "Jours écoulés"}
+            {t("days_elapsed")}
           </Text>
           <Text style={[styles.detailValue, { color }]}>
             {joursEcoules} / {HAWL_DAYS}
@@ -202,7 +203,7 @@ const HawlActifIndicator = ({
         {!complete && (
           <View style={[styles.detailBlock, { alignItems: "center" }]}>
             <Text style={[styles.detailLabel, { color: th.textSec() }]}>
-              {t("days_remaining") || "Jours restants"}
+              {t("days_remaining")}
             </Text>
             <Text
               style={[
@@ -219,15 +220,11 @@ const HawlActifIndicator = ({
           <View style={[styles.detailBlock, { alignItems: "flex-end" }]}>
             <Text style={[styles.detailLabel, { color: th.textSec() }]}>
               {complete
-                ? t("hawl_completed_on") || "Complété le"
-                : t("hawl_deadline") || "Échéance"}
+                ? t("hawl_completed_on")
+                : t("hawl_deadline")}
             </Text>
             <Text style={[styles.detailValue, { color, fontSize: 12 }]}>
-              {dateEcheance.toLocaleDateString("fr-FR", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+              {formatDate(dateEcheance, currentLanguage, { day: "numeric", month: "short", year: "numeric" })}
             </Text>
           </View>
         )}
@@ -240,8 +237,7 @@ const HawlActifIndicator = ({
         >
           <AlertCircle size={12} color={COLORS.warning} />
           <Text style={[styles.alertText, { color: COLORS.warning }]}>
-            {t("hawl_ending_soon", { days: joursRestants }) ||
-              `Hawl se termine dans ${joursRestants} jours`}
+            {t("hawl_ending_soon", { count: joursRestants })}
           </Text>
         </View>
       )}
@@ -253,7 +249,7 @@ const HawlActifIndicator = ({
         >
           <CheckCircle size={12} color={COLORS.success} />
           <Text style={[styles.alertText, { color: COLORS.success }]}>
-            {t("zakat_due_on_asset") || "La zakat est due sur ce bien"}
+            {t("zakat_due_on_asset")}
           </Text>
         </View>
       )}
@@ -267,7 +263,7 @@ const HawlActifIndicator = ({
  * Props : stats — résultat de hawlService.computeHawlStats()
  */
 export const HawlStatsCard = ({ stats, formatCurrency, isDark }) => {
-  const { t } = useAppTranslation();
+  const { t, currentLanguage, isRTL } = useAppTranslation();
   if (!stats || stats.total === 0) return null;
 
   const th = {
@@ -281,14 +277,14 @@ export const HawlStatsCard = ({ stats, formatCurrency, isDark }) => {
     <View
       style={[
         styles.statsCard,
-        { backgroundColor: th.card(), borderColor: th.border() },
+        { backgroundColor: th.card(), borderColor: th.border(), writingDirection: isRTL ? "rtl" : "ltr" },
       ]}
     >
       {/* Titre */}
       <View style={styles.statsHeader}>
         <Clock size={16} color={COLORS.primary} />
         <Text style={[styles.statsTitle, { color: th.text() }]}>
-          {t("hawl_per_asset") || "Hawl par actif"}
+          {t("hawl_per_asset")}
         </Text>
       </View>
 
@@ -304,7 +300,7 @@ export const HawlStatsCard = ({ stats, formatCurrency, isDark }) => {
             {stats.complets}
           </Text>
           <Text style={[styles.statsBubbleLabel, { color: COLORS.success }]}>
-            {t("hawl_complete") || "Complets"}
+            {t("hawl_complete")}
           </Text>
         </View>
         <View
@@ -317,7 +313,7 @@ export const HawlStatsCard = ({ stats, formatCurrency, isDark }) => {
             {stats.enCours}
           </Text>
           <Text style={[styles.statsBubbleLabel, { color: COLORS.warning }]}>
-            {t("hawl_in_progress") || "En cours"}
+            {t("hawl_in_progress")}
           </Text>
         </View>
       </View>
@@ -327,7 +323,7 @@ export const HawlStatsCard = ({ stats, formatCurrency, isDark }) => {
         <View style={[styles.statsValues, { borderTopColor: th.border() }]}>
           <View style={styles.statsValueItem}>
             <Text style={[styles.statsValueLabel, { color: th.textSec() }]}>
-              {t("value_hawl_complete") || "Valeur hawl complété"}
+              {t("value_hawl_complete")}
             </Text>
             <Text style={[styles.statsValueAmt, { color: COLORS.success }]}>
               {formatCurrency(stats.valeurAvecHawl)}
@@ -335,7 +331,7 @@ export const HawlStatsCard = ({ stats, formatCurrency, isDark }) => {
           </View>
           <View style={[styles.statsValueItem, { alignItems: "flex-end" }]}>
             <Text style={[styles.statsValueLabel, { color: th.textSec() }]}>
-              {t("value_hawl_pending") || "En attente hawl"}
+              {t("value_hawl_pending")}
             </Text>
             <Text style={[styles.statsValueAmt, { color: COLORS.warning }]}>
               {formatCurrency(stats.valeurSansHawl)}
@@ -357,7 +353,7 @@ export const HawlStatsCard = ({ stats, formatCurrency, isDark }) => {
         >
           <Clock size={12} color={COLORS.primary} />
           <Text style={[styles.nextHawlText, { color: COLORS.primary }]}>
-            {t("next_hawl") || "Prochain hawl"} :
+            {t("next_hawl")} :
             <Text style={{ fontWeight: "700" }}>
               {" "}
               {stats.prochainHawl.joursRestants}j{" "}

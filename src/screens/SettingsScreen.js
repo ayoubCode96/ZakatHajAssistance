@@ -25,7 +25,7 @@ import {
 import Button from "../components/Button";
 
 const SettingsScreen = () => {
-  const { t, currentLanguage, changeLanguage } = useAppTranslation();
+  const { t, currentLanguage, changeLanguage, isRTL } = useAppTranslation();
   const { currentTheme, toggleTheme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { userCurrency, refreshData, userCountry } = useCurrency();
@@ -35,20 +35,20 @@ const SettingsScreen = () => {
 
   const handleLanguageChange = (lang) => {
     changeLanguage(lang);
-    success(t("success"), `Langue changée en ${lang.toUpperCase()}`);
+    success(t("success"), t("language_changed", { lang: lang.toUpperCase() }));
   };
 
   const handleRefreshData = async () => {
     setRefreshing(true);
     await refreshData();
     setRefreshing(false);
-    success(t("success"), "Données mises à jour");
+    success(t("success"), t("data_updated"));
   };
 
   const handleLogout = () => {
     confirm(
       t("logout"),
-      "Êtes-vous sûr de vouloir vous déconnecter ?",
+      t("logout_confirm_message"),
       signOut,
     );
   };
@@ -104,7 +104,7 @@ const SettingsScreen = () => {
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: getBackgroundColor() }]}
+      style={[styles.container, { backgroundColor: getBackgroundColor(), writingDirection: isRTL ? "rtl" : "ltr" }]}
     >
       <View style={styles.content}>
         {/* En-tête */}
@@ -118,11 +118,11 @@ const SettingsScreen = () => {
         {/* Section Profil */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: getTextColor() }]}>
-            Profil
+            {t("profile")}
           </Text>
           <SettingItem
             icon={User}
-            title={user?.name || "Utilisateur"}
+            title={user?.name || t("user")}
             description={user?.email}
             rightComponent={
               <Text
@@ -131,7 +131,7 @@ const SettingsScreen = () => {
                   { color: getSecondaryTextColor() },
                 ]}
               >
-                Connecté
+                {t("connected")}
               </Text>
             }
           />
@@ -140,7 +140,7 @@ const SettingsScreen = () => {
         {/* Section Apparence */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: getTextColor() }]}>
-            Apparence
+            {t("appearance")}
           </Text>
           <SettingItem
             icon={currentTheme === "dark" ? Moon : Sun}
@@ -162,12 +162,12 @@ const SettingsScreen = () => {
         {/* Section Langue */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: getTextColor() }]}>
-            Langue
+            {t("language")}
           </Text>
           <SettingItem
             icon={Languages}
             title={t("language")}
-            description={`Langue actuelle: ${currentLanguage.toUpperCase()}`}
+            description={t("current_language", { lang: currentLanguage.toUpperCase() })}
             rightComponent={
               <Text
                 style={[
@@ -194,7 +194,7 @@ const SettingsScreen = () => {
                   currentLanguage === "fr" && styles.languageOptionTextSelected,
                 ]}
               >
-                Français
+                {t("french")}
               </Text>
             </TouchableOpacity>
 
@@ -211,7 +211,7 @@ const SettingsScreen = () => {
                   currentLanguage === "ar" && styles.languageOptionTextSelected,
                 ]}
               >
-                العربية
+                {t("arabic")}
               </Text>
             </TouchableOpacity>
 
@@ -228,7 +228,7 @@ const SettingsScreen = () => {
                   currentLanguage === "en" && styles.languageOptionTextSelected,
                 ]}
               >
-                English
+                {t("english")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -237,15 +237,15 @@ const SettingsScreen = () => {
         {/* Section Données */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: getTextColor() }]}>
-            Données
+            {t("data_section")}
           </Text>
           <SettingItem
             icon={Globe}
-            title="Localisation"
+            title={t("location_setting")}
             description={
               userCountry
                 ? `${userCountry.name}${userCountry.city ? `, ${userCountry.city}` : ""}`
-                : "Non détectée"
+                : t("not_detected")
             }
             rightComponent={
               <Text
@@ -261,8 +261,8 @@ const SettingsScreen = () => {
 
           <SettingItem
             icon={RefreshCw}
-            title="Actualiser les données"
-            description="Prix des métaux et taux de change"
+            title={t("refresh_data")}
+            description={t("refresh_desc")}
             rightComponent={
               <TouchableOpacity
                 onPress={handleRefreshData}
@@ -281,7 +281,7 @@ const SettingsScreen = () => {
         {/* Section Compte */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: getTextColor() }]}>
-            Compte
+            {t("account_section")}
           </Text>
           <Button
             title={t("logout")}
@@ -295,14 +295,13 @@ const SettingsScreen = () => {
         {/* Information version */}
         <View style={[styles.footer, { backgroundColor: getCardColor() }]}>
           <Text style={[styles.footerText, { color: getSecondaryTextColor() }]}>
-            Zakati & Hajj Assistant v1.0.0
+            {t("version_footer")}
           </Text>
           <Text style={[styles.footerText, { color: getSecondaryTextColor() }]}>
-            Développé pour la communauté musulmane par: {"\n"} Ayoub El AOUADE -
-            2026
+            {t("developer_credit")}
           </Text>
           <Text style={[styles.footerText, { color: getSecondaryTextColor() }]}>
-            © 2026 Tous droits réservés
+            {t("copyright")}
           </Text>
         </View>
       </View>

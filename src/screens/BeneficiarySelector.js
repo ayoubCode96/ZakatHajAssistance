@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { X, Plus } from "lucide-react-native";
 import InputField from "../components/InputField";
+import { useAppTranslation } from "../hooks/useTranslation";
 
 const MALIKI_PRIMARY = "#1a5d1a";
 
@@ -49,6 +50,7 @@ const BeneficiarySelector = React.memo(
         .join("")
         .toUpperCase();
 
+    const { isRTL } = useAppTranslation();
     const textColor = isDark ? "#e8edf5" : "#1a2a1a";
     const textSec = isDark ? "#a8c6a8" : "#4a6b4a";
     const borderColor = isDark ? "#334155" : "#e2e8f0";
@@ -68,6 +70,7 @@ const BeneficiarySelector = React.memo(
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
+            writingDirection: isRTL ? "rtl" : "ltr",
           }}
         >
           <View
@@ -111,7 +114,7 @@ const BeneficiarySelector = React.memo(
     }
 
     return (
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: 8, writingDirection: isRTL ? "rtl" : "ltr" }}>
         {/* Beneficiary list */}
         <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled>
           {beneficiaires.length === 0 ? (
@@ -123,7 +126,7 @@ const BeneficiarySelector = React.memo(
                 paddingVertical: 12,
               }}
             >
-              Aucun bénéficiaire encore
+              {t("no_beneficiaries_yet")}
             </Text>
           ) : (
             beneficiaires.map((b) => {
@@ -208,7 +211,7 @@ const BeneficiarySelector = React.memo(
           <Text
             style={{ color: MALIKI_PRIMARY, fontSize: 13, fontWeight: "500" }}
           >
-            {showAddForm ? "Annuler" : "Ajouter un bénéficiaire"}
+            {showAddForm ? t("cancel") : t("add_beneficiary")}
           </Text>
         </TouchableOpacity>
 
@@ -225,7 +228,7 @@ const BeneficiarySelector = React.memo(
             }}
           >
             <Text style={{ fontSize: 13, fontWeight: "500", color: textColor }}>
-              Nouveau bénéficiaire
+              {t("new_beneficiary")}
             </Text>
 
             <TextInput
@@ -240,13 +243,13 @@ const BeneficiarySelector = React.memo(
               }}
               value={newName}
               onChangeText={setNewName}
-              placeholder="Ex: Association Al-Baraka..."
+              placeholder={t("beneficiary_name_placeholder")}
               placeholderTextColor={textSec}
             />
 
             <View>
               <Text style={{ fontSize: 12, color: textSec, marginBottom: 8 }}>
-                Catégorie (8 bénéficiaires légitimes en Islam)
+                {t("beneficiary_category_label")}
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: "row", gap: 6 }}>
@@ -296,7 +299,7 @@ const BeneficiarySelector = React.memo(
                   alignItems: "center",
                 }}
               >
-                <Text style={{ fontSize: 13, color: textSec }}>Annuler</Text>
+                <Text style={{ fontSize: 13, color: textSec }}>{t("cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleAdd}
@@ -311,7 +314,7 @@ const BeneficiarySelector = React.memo(
                 <Text
                   style={{ fontSize: 13, fontWeight: "500", color: "#fff" }}
                 >
-                  Ajouter
+                  {t("add_button")}
                 </Text>
               </TouchableOpacity>
             </View>
